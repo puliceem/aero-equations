@@ -7,7 +7,6 @@ import math as m
 ##################################################################
 ######################## Flight Mechanics ########################
 ##################################################################
-#TODO: not verified --> tried wiht HW2 and worked
 def cordTransform( vector, phi, theta, psi, toSystem ):
     phiRad = np.deg2rad(phi)
     thetaRad = np.deg2rad(theta)
