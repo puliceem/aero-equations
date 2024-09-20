@@ -37,6 +37,23 @@ def inertialAcceleration( v, vDot, omega ):
                   [vDot[1] + omega[2]*v[0] - omega[0]*v[2]], 
                   [vDot[2] + omega[0]*v[1] - omega[1]*v[0]]])
 
+
+##################################################################
+#################### Air-Breathing Propulsion ####################
+##################################################################
+
+def compIsoEfficiency(T01, T02, pRatio, gamma=1.4):
+    exp = (gamma-1)/gamma
+    eta = T01*(pRatio**(gamma) - 1)/(T02 - T01)
+    return eta
+
+def compPolyEfficiency(pRatio, tRatio, gamma=1.4):
+    exp = (gamma-1)/gamma
+    eta = (np.log(pRatio)**exp)/np.log(tRatio)
+    return eta
+
+
+
 ##################################################################
 ########################## Gas Dynamics ##########################
 ##################################################################
