@@ -52,6 +52,77 @@ def compPolyEfficiency(pRatio, tRatio, gamma=1.4):
     eta = (np.log(pRatio)**exp)/np.log(tRatio)
     return eta
 
+def engineCalculations():
+    selection = 1
+    looped = False
+    tOut = 0
+    pOut = 0
+
+    pa = float(input("Enter ambient pressure: "))
+    Ta = float(input("Enter ambient temp: "))
+
+    pIn = pa
+    tIn = Ta
+
+    while selection != 0:
+        print("Select a station from the list")
+        selection = int(input("(1) Compressor\n(2) Combuster\n(3) Turbine\n"))
+
+        # Compressor
+        if selection == 1:
+            pRatio = 0
+            eta = 0
+
+            pRatio = float(input("Enter Compressor pressure ratio: "))
+            eta = float(input("Enter Compressor Efficiency: "))
+
+            #assuming cold air
+            exp = (0.4)/(1.4)
+            delT = (tIn/eta)*((pRatio**exp)-1)
+            tOut = delT+tIn
+
+            pOut = pRatio*pIn
+
+            print(f'\nP out = {pOut}')
+            print(f'delta T = {delT}')
+            print(f'Temp Out = {tOut}\n')
+
+        # Combuster
+        # TODO: assuing no heat exchanger
+        elif selection == 2:
+            pDrop = 0
+
+            #assuming pDrop ONLY --> not pDrop/pIn
+            pDrop = float(input("Enter pressure drop across combustor: "))
+            normDrop = pDrop/pIn
+
+            pOut = pIn*(1-normDrop)
+
+            print(f'P out = {pOut}')
+
+        #Turbine
+        elif selection == 3:
+            pRatio = 0
+            eta = 0
+            
+            pRatio = float(input("Enter Turbine pressure ratio: "))
+            eta = float(input("Enter Turbine Efficiency: "))
+
+            #assuming hot air
+            exp = (0.333/1.333)
+            delT = eta*tIn*(1-(1/pRatio)**exp)
+            tOut = delT*tIn
+
+            pOut = pRatio*pIn
+
+            print(f'\nP out = {pOut}')
+            print(f'delta T = {delT}')
+            print(f'Temp Out = {tOut}\n')
+
+        looped = True
+        pIn = pOut
+        tIn = tOut
+        print("Select 0 to quit or ...")
 
 
 ##################################################################
