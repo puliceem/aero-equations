@@ -124,6 +124,18 @@ def engineCalculations():
         tIn = tOut
         print("Select 0 to quit or ...")
 
+##################################################################
+#################### Air-Breathing Propulsion ####################
+##################################################################
+
+#TODO: DOES NOT WORK
+def machFromAreaRatio(A, Astar, gamma=1.4):
+    sol = A/Astar
+    M = sp.symbols('M')
+
+    equation = sp.Eq(1/M*((2/(gamma+1))*(1+(gamma-1)/2*M**2))**((gamma+1)/(2*(gamma-1))), sol)
+
+    return sp.solve(equation)
 
 ##################################################################
 ########################## Gas Dynamics ##########################
