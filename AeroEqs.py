@@ -3,6 +3,7 @@ import numpy as np
 import sympy as sp
 import numpy.linalg as lg   
 import math as m
+import SupportingFiles.engineHelper as eh
 
 ##################################################################
 ######################## Flight Mechanics ########################
@@ -52,11 +53,11 @@ def compPolyEfficiency(pRatio, tRatio, gamma=1.4):
     eta = (np.log(pRatio)**exp)/np.log(tRatio)
     return eta
 
-def engineCalculations():
+def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
     selection = 1
-    looped = False
     tOut = 0
     pOut = 0
+    cWork = 0
 
     pa = float(input("Enter ambient pressure: "))
     Ta = float(input("Enter ambient temp: "))
@@ -64,62 +65,26 @@ def engineCalculations():
     pIn = pa
     tIn = Ta
 
+    #TODO: add polytropic options --> maybe ask before loop?
     while selection != 0:
         print("Select a station from the list")
         selection = int(input("(1) Compressor\n(2) Combuster\n(3) Turbine\n"))
 
         # Compressor
+        #TODO: only handles single compressor for work
         if selection == 1:
-            pRatio = 0
-            eta = 0
-
-            pRatio = float(input("Enter Compressor pressure ratio: "))
-            eta = float(input("Enter Compressor Efficiency: "))
-
-            #assuming cold air
-            exp = (0.4)/(1.4)
-            delT = (tIn/eta)*((pRatio**exp)-1)
-            tOut = delT+tIn
-
-            pOut = pRatio*pIn
-
-            print(f'\nP out = {pOut}')
-            print(f'delta T = {delT}')
-            print(f'Temp Out = {tOut}\n')
+            pOut, tOut, cWork = eh.compressor(pIn, tIn, gammaA, cpa)
 
         # Combuster
         # TODO: assuing no heat exchanger
         elif selection == 2:
-            pDrop = 0
-
-            #assuming pDrop ONLY --> not pDrop/pIn
-            pDrop = float(input("Enter pressure drop across combustor: "))
-            normDrop = pDrop/pIn
-
-            pOut = pIn*(1-normDrop)
-
-            print(f'P out = {pOut}')
+            pOut = eh.combustor(pIn)
 
         #Turbine
+        #TODO: only handles single turbine for work
         elif selection == 3:
-            pRatio = 0
-            eta = 0
-            
-            pRatio = float(input("Enter Turbine pressure ratio: "))
-            eta = float(input("Enter Turbine Efficiency: "))
+            pOut, tOut, tWork = eh.turbine(pIn, tIn, gammaG, cpg, cWork)
 
-            #assuming hot air
-            exp = (0.333/1.333)
-            delT = eta*tIn*(1-(1/pRatio)**exp)
-            tOut = delT*tIn
-
-            pOut = pRatio*pIn
-
-            print(f'\nP out = {pOut}')
-            print(f'delta T = {delT}')
-            print(f'Temp Out = {tOut}\n')
-
-        looped = True
         pIn = pOut
         tIn = tOut
         print("Select 0 to quit or ...")
@@ -253,7 +218,7 @@ def rootsearch(f,a,b,dx):
 # If an iteration is outside brackets 
 # --> it is disreguarded and bisection is used
 def newtonRaphson(f,df,a,b,tol=1.0e-9):
-    import error
+    import SupportingFiles.error as error
     from numpy import sign
     
     fa = f(a)
