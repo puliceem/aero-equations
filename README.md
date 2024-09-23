@@ -1,4 +1,1 @@
-These are equations used in the following aerospace classes:
-    aerospace computing
-    gas dynamics
-    flight mechanics
+Python version 3.12.4 used from anaconda navigator. These are equations used in the following aerospace classes: aerospace computing; gas dynamics; flight mechanics; air-breathing propulsion; rocket propulsion
