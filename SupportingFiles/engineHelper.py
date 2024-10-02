@@ -1,3 +1,27 @@
+class Engine: 
+
+    #variables
+    components = []
+    compressorWork = 0
+    turbineWork = 0
+    totalWork = 0
+
+    #printing
+    def __str__(self) -> str:
+        for i in self.components: print(i)
+        return("")
+
+    #methods
+    def addComponent(self, component):
+        self.components.append(component)
+
+    #set
+    def setCompressorWork(self, work):
+        self.compressorWork = work
+
+    def setTurbineWork(self, work):
+        self.turbineWork = work
+
 def compressor(pIn, tIn, gamma, cp):
     etaM = 0
     work = 0

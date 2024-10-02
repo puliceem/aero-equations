@@ -4,6 +4,7 @@ import sympy as sp
 import numpy.linalg as lg   
 import math as m
 import SupportingFiles.engineHelper as eh
+import SupportingFiles.engineBuilder as eb
 
 ##################################################################
 ######################## Flight Mechanics ########################
@@ -54,6 +55,9 @@ def compPolyEfficiency(pRatio, tRatio, gamma=1.4):
     return eta
 
 def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
+    engine = eh.Engine()
+
+    station = 0
     selection = 1
     tOut = 0
     pOut = 0
@@ -67,27 +71,51 @@ def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
 
     #TODO: add polytropic options --> maybe ask before loop?
     while selection != 0:
+        station += 1
+
         print("Select a station from the list")
-        selection = int(input("(1) Compressor\n(2) Combuster\n(3) Turbine\n"))
+        selection = int(input("(1) Compressor\n(2) Combuster\n(3) Turbine\n(0) Stop\n"))
 
         # Compressor
         #TODO: only handles single compressor for work
         if selection == 1:
             pOut, tOut, cWork = eh.compressor(pIn, tIn, gammaA, cpa)
+            
+            tempCompressor = eb.Compressor(pIn, tIn, station)
+            tempCompressor.setP_Out(pOut)
+            tempCompressor.setT_Out(tOut)
+            tempCompressor.setWork(cWork)
+
+            engine.addComponent(tempCompressor)
+            engine.setCompressorWork(cWork)
 
         # Combuster
         # TODO: assuing no heat exchanger
         elif selection == 2:
             pOut = eh.combustor(pIn)
+            
+            tempCombustor = eb.Combustor(pIn, tIn, station)
+
+            engine.addComponent(tempCombustor)
 
         #Turbine
         #TODO: only handles single turbine for work
         elif selection == 3:
             pOut, tOut, tWork = eh.turbine(pIn, tIn, gammaG, cpg, cWork)
 
+            tempTurbine = eb.Turbine(pIn, tIn, station)
+            tempTurbine.setP_Out(pOut)
+            tempTurbine.setT_Out(tOut)
+            tempTurbine.setWork(tWork)
+
+            engine.addComponent(tempTurbine)
+            engine.setTurbineWork(tWork)
+
         pIn = pOut
         tIn = tOut
-        print("Select 0 to quit or ...")
+
+    print("\n")
+    print(engine)
 
 ##################################################################
 #################### Air-Breathing Propulsion ####################
