@@ -44,16 +44,6 @@ def inertialAcceleration( v, vDot, omega ):
 #################### Air-Breathing Propulsion ####################
 ##################################################################
 
-def compIsoEfficiency(T01, T02, pRatio, gamma=1.4):
-    exp = (gamma-1)/gamma
-    eta = T01*(pRatio**(gamma) - 1)/(T02 - T01)
-    return eta
-
-def compPolyEfficiency(pRatio, tRatio, gamma=1.4):
-    exp = (gamma-1)/gamma
-    eta = (np.log(pRatio)**exp)/np.log(tRatio)
-    return eta
-
 def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
     engine = eh.Engine()
 
@@ -117,10 +107,6 @@ def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
     print("\n")
     print(engine)
 
-##################################################################
-#################### Air-Breathing Propulsion ####################
-##################################################################
-
 #TODO: DOES NOT WORK
 def machFromAreaRatio(A, Astar, gamma=1.4):
     sol = A/Astar
@@ -129,6 +115,40 @@ def machFromAreaRatio(A, Astar, gamma=1.4):
     equation = sp.Eq(1/M*((2/(gamma+1))*(1+(gamma-1)/2*M**2))**((gamma+1)/(2*(gamma-1))), sol)
 
     return sp.solve(equation)
+
+def compIsoEfficiency(T01, T02, pRatio, gamma=1.4):
+    exp = (gamma-1)/gamma
+    eta = T01*(pRatio**(gamma) - 1)/(T02 - T01)
+    return eta
+
+def compPolyEfficiency(pRatio, tRatio, gamma=1.4):
+    exp = (gamma-1)/gamma
+    eta = (np.log(pRatio)**exp)/np.log(tRatio)
+    return eta
+
+#TODO: figure out if this is good or not (storing eqs here)
+def compTstag(T, eta, pRatio, gamma):
+    exp = (gamma-1)/gamma
+    delT = (T/eta)*((pRatio**exp)-1)
+    tOut = delT+T
+
+    return tOut, delT
+
+def compWork(cp, delT, eta):
+    return cp*delT/eta
+
+def turbTstag(T, eta, pRatio, gamma):
+    exp = (gamma-1/gamma)
+    delT = eta*T*(1-(1/pRatio)**exp)
+    tOut = T-delT
+
+    return tOut, delT
+
+def turbPratio(T, delT, eta, gamma):
+    return (eta*T/(eta*T-delT))**(gamma/(gamma-1))
+
+def turbWork(cp, delT, eta):
+    return cp*delT*eta
 
 ##################################################################
 ########################## Gas Dynamics ##########################
