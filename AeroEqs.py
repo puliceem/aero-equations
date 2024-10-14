@@ -44,7 +44,6 @@ def inertialAcceleration( v, vDot, omega ):
 ##################################################################
 
 def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
-    station = 0
     selection = 1
     tOut = 0
     pOut = 0
@@ -52,39 +51,53 @@ def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
     pa = float(input("Enter ambient pressure: "))
     Ta = float(input("Enter ambient temp: "))
     mEta = float(input("Enter Mechanical Efficiency: "))
+    stationStart = int(input("Enter the first station number: "))
+    print("\n")
 
-    engine = eb.Engine(mEta)
+    engine = eb.Engine(mEta, pa, Ta, stationStart)
 
     pIn = pa
     tIn = Ta
 
     while selection != 0:
-        station += 1
+        print("Select a station from the list")
+        selection = int(input("(1) Intake\n(2) Fan\n(3) Compressor\n(4) Combuster\n(5) Turbine\n(6) Nozzle\n(0) Stop\n"))
 
-        print("\nSelect a station from the list")
-        selection = int(input("(1) Compressor\n(2) Combuster\n(3) Turbine\n(0) Stop\n"))
+        # Stop
+        if selection == 0: break
+
+        # Inlet
+        elif selection == 1:
+            component = eb.Inlet(gammaA, cpa, engine)
+
+        #fan
+        elif selection == 2:
+            #TODO: add functionality
+            pass
 
         # Compressor
-        if selection == 1:
-            comp = eb.Compressor(pIn, tIn, station, gammaA, cpa, engine)
-            pOut = comp.getPout()
-            tOut = comp.getTout()
+        elif selection == 3:
+            component = eb.Compressor(pIn, tIn, gammaA, cpa, engine)
 
         # Combuster
-        # TODO: assuing no heat exchanger
-        elif selection == 2:
-            comb = eb.Combustor(pIn, pOut, station, engine)
-            pOut = comb.getPout()
-            tOut = comb.getTout()
+        # assuing no heat exchanger
+        elif selection == 4:
+            component = eb.Combustor(pIn, pOut, engine)
 
         #Turbine
-        elif selection == 3:
-            turb = eb.Turbine(pIn, tIn, station, gammaG, cpg, engine)
-            pOut = turb.getPout()
-            tOut = turb.getTout()
+        elif selection == 5:
+            component = eb.Turbine(pIn, tIn, gammaG, cpg, engine)
 
-        pIn = pOut
-        tIn = tOut
+        elif selection == 6: 
+            component = eb.Nozzle(pIn, tIn, gammaG, cpg, engine)
+
+        else: print("Make a selection from the list")
+
+        if selection > 0 and selection < 7:
+            pIn = component.getPout()
+            tIn = component.getTout()
+            #TODO: determine if this should happen here or in classes
+            engine.addComponent(component)
 
     print("\n")
     print(engine)
@@ -98,63 +111,6 @@ def machFromAreaRatio(A, Astar, gamma=1.4):
 
     return sp.solve(equation)
 
-def compIsoEfficiency(T01, T02, pRatio, gamma=1.4):
-    exp = (gamma-1)/gamma
-    eta = T01*(pRatio**(gamma) - 1)/(T02 - T01)
-    return eta
-
-def compPolyEfficiency(pRatio, tRatio, gamma=1.4):
-    exp = (gamma-1)/gamma
-    eta = (np.log(pRatio)**exp)/np.log(tRatio)
-    return eta
-
-def inletTstag(T, Ca, cp):
-    return T+(Ca**2/(2*cp))
-
-def inletPratio(T, Ca, cp, gamma, etaI):
-    exp = gamma/(gamma-1)
-    pRatio = (1+(etaI*Ca**2/(2*cp*T)))**exp
-    
-    return pRatio
-
-def compTstag(T, eta, pRatio, gamma):
-    exp = (gamma-1)/gamma
-    delT = (T/eta)*((pRatio**exp)-1)
-    tOut = delT+T
-
-    return tOut, delT
-
-def compPolyTstag(T, etaC, pRatio, gamma):
-    exp = (gamma-1)/(etaC*gamma)
-    tRatio = pRatio**exp
-    tOut = T*tRatio
-    delT = tOut - T
-
-    return tOut, delT
-
-def compWork(cp, delT, etaM):
-    return cp*delT/etaM
-
-def turbTstag(T, etaT, pRatio, gamma):
-    exp = (gamma-1)/gamma
-    delT = etaT*T*(1-((1/pRatio)**exp))
-    tOut = T-delT
-
-    return tOut, delT
-
-def turbPolyTstag(T, etaT, pRatio, gamma):
-    exp = etaT*(gamma-1)/gamma
-    tRatio = pRatio**exp
-    tOut = T/tRatio
-    delT = T - tOut
-
-    return tOut, delT
-
-def turbPratio(T, delT, etaT, gamma):
-    return (etaT*T/(etaT*T-delT))**(gamma/(gamma-1))
-
-def turbWork(cp, delT, etaM):
-    return cp*delT*etaM
 
 ##################################################################
 ########################## Gas Dynamics ##########################

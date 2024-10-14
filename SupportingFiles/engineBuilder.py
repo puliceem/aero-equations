@@ -1,4 +1,5 @@
 import AeroEqs as ae
+import numpy as np
 
 class Engine: 
 
@@ -8,8 +9,11 @@ class Engine:
     turbineWork = 0
     Ca = 0
 
-    def __init__(self, etaM):
+    def __init__(self, etaM, pa, Ta, startStation):
         self.etaM = etaM
+        self.pa = pa
+        self.Ta = Ta
+        self.station = startStation
 
     #printing
     def __str__(self) -> str:
@@ -25,6 +29,7 @@ class Engine:
 
     #methods
     def addComponent(self, component):
+        self.station += 1
         self.components.append(component)
 
     #set
@@ -43,31 +48,96 @@ class Engine:
     #get
     def getEtaM(self): return self.etaM
     def getWorkC(self): return self.compressorWork
+    def getTa(self): return self.Ta
+    def getPa(self): return self.pa
+    def getStation(self): return self.station
+    def getCa(self): return self.Ca
 
 
 class Inlet:
-    def __init__(self, pIn, tIn, stationStart, gamma, cp, engine: Engine):
-        self.pIn = pIn
-        self.tIn = tIn
+    def __init__(self, gamma, cp, engine: Engine):
+        #set variables from params
         self.gamma = gamma
         self.cp = cp
-        self.stationStart = stationStart
+        self.stationStart = engine.getStation()
 
-        self.Ca = float(input("\nEnter aircraft speed: "))
+        #get speed (engine) and efficiency (inlet)
+        #assuming inlet means airplane
+        engine.setCa(float(input("\nEnter aircraft speed (m/s): ")))
         self.eta = float(input("Enter Intake Isentropic Efficiency: "))
 
+        #set p and t in
+        self.pIn = engine.getPa()
+        self.tIn = engine.getTa()
+
+        #calculate T and P
+        pRatio = self.inletPratio(engine.getCa())
+        self.pOut = pRatio*engine.getPa()
+        self.tOut = self.inletTstag(engine.getCa())
+
+        print(f'\nP out = {self.pOut}')
+        print(f'Temp Out = {self.tOut}')
+        print("\n")
+
+    def __str__(self) -> str:
+        print(f"({self.stationStart}): P={self.pIn} T={self.tIn}")
+        print("    ()                  ()")
+        print("    ||                  ||")
+        print("    ||                  ||")
+        print("    ||                  ||")
+        print("    ()                  ()")
+        return("")
+
+    # Get
+    def getTout(self): return self.tOut
+    def getPout(self): return self.pOut
+    def getStation(self): return self.stationStart
+
+    #math
+    def inletTstag(self, Ca):
+        #assuming Ca = m/s
+        T = self.tIn
+        cp = self.cp
+
+        Tstag = T+(Ca**2/(2*cp*1000))
+
+        return Tstag
+
+    def inletPratio(self, Ca):
+        T = self.tIn
+        cp = self.cp
+        etaI = self.eta
+        gamma = self.gamma
+
+        exp = gamma/(gamma-1)
+        pRatio = (1+(etaI*Ca**2/(2*cp*T*1000)))**exp
         
+        return pRatio
+    
+
+class Fan:
+
+    def __str__(self) -> str:
+        #TODO: add station, p, T
+        print(f"(): P= T=")
+        print(r"  //   ____     ____    \\")
+        print(r" ||   /    \   /    \    ||")
+        print(r" ||  (-------X-------)   ||")
+        print(r" ||   \____/   \____/    ||")
+        print("                           ")
+        print(r"//\\                    //\\")
+        return("")
         
 
 class Compressor:
 
     # Constructor
-    def __init__(self, pIn, tIn, stationStart, gamma, cp, engine: Engine):
+    def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
         self.pIn = pIn
         self.tIn = tIn
         self.gamma = gamma
         self.cp = cp
-        self.stationStart = stationStart
+        self.stationStart = engine.getStation()
 
         efficiencyChoice = 0
 
@@ -80,22 +150,23 @@ class Compressor:
             efficiencyChoice = int(input("(1) Isentropic\n(2) Polytropic\n"))
             eta = float(input("\nEnter Compressor Efficiency: "))
             
+            #isentropic
             if efficiencyChoice == 1: 
                 self.etaIsen = eta
-                self.tOut, self.delT = ae.compTstag(tIn, eta, self.pRatio, gamma)
+                self.tOut, self.delT = self.compTstag()
+            #polytropic
             elif efficiencyChoice == 2: 
                 self.etaPoly = eta
-                self.tOut, self.delT = ae.compPolyTstag(tIn, eta, self.pRatio, gamma)
+                self.tOut, self.delT = self.compPolyTstag()
             else: 
                 efficiencyChoice = 0
                 print("Select from the list given")
 
-        self.work = ae.compWork(cp, self.delT, engine.getEtaM())
+        self.work = self.compWork(engine.getEtaM())
 
         self.pOut = self.pRatio*pIn
 
-        #adding to engine
-        engine.addComponent(self)
+        #adding work to engine
         engine.setCompressorWork(self.work)
 
         print(f'\nP out = {self.pOut}')
@@ -106,13 +177,13 @@ class Compressor:
 
     def __str__(self) -> str:
         print(f"({self.stationStart}): P={self.pIn} T={self.tIn}")
-        print(" ____________________")
-        print("| ------------------ |")
-        print("| ------------------ |")
-        print(r" \ ---------------- /")
-        print(r"  \ -------------- /")
-        print(r"   \ ____________ /")
-        print("    |            |")
+        print("     ____________________")
+        print("    | ------------------ |")
+        print("    | ------------------ |")
+        print(r"     \ ---------------- /")
+        print(r"      \ -------------- /")
+        print(r"       \ ____________ /")
+        print("        |            |")
         return("")
     
     # Get
@@ -121,14 +192,60 @@ class Compressor:
     def getPout(self): return self.pOut
     def getStation(self): return self.stationStart
 
+    #Math
+    #TODO: not used
+    def compIsoEfficiency(self, T01, T02, pRatio, gamma=1.4):
+        exp = (gamma-1)/gamma
+        eta = T01*(pRatio**(gamma) - 1)/(T02 - T01)
+        return eta
+
+    #TODO: not used
+    def compPolyEfficiency(self, pRatio, tRatio, gamma=1.4):
+        exp = (gamma-1)/gamma
+        eta = (np.log(pRatio)**exp)/np.log(tRatio)
+        return eta
+
+    def compTstag(self):
+        #assuming only used for isentropic
+        T = self.tIn
+        eta = self.etaIsen
+        pRatio = self.pRatio
+        gamma = self.gamma
+        
+        exp = (gamma-1)/gamma
+        delT = (T/eta)*((pRatio**exp)-1)
+        tOut = delT+T
+
+        return tOut, delT
+
+    def compPolyTstag(self):
+        #assuming only used for polytropic
+        T = self.tIn
+        etaC = self.etaPoly
+        pRatio = self.pRatio
+        gamma = self.gamma
+
+        exp = (gamma-1)/(etaC*gamma)
+        tRatio = pRatio**exp
+        tOut = T*tRatio
+        delT = tOut - T
+
+        return tOut, delT
+
+    def compWork(self, etaM):
+        cp = self.cp
+        delT = self.delT
+        
+        return cp*delT/etaM
+
 
 class Combustor:
 
     # Constructor
-    def __init__(self, pIn, tIn, stationStart, engine: Engine):
+    def __init__(self, pIn, tIn, engine: Engine):
         self.pIn = pIn
         self.tIn = tIn
-        self.stationStart = stationStart
+        self.stationStart = engine.getStation()
 
         #assuming pDrop ONLY --> not pDrop/pIn
         self.pDrop = float(input("\nEnter pressure drop across combustor: "))
@@ -137,19 +254,16 @@ class Combustor:
         #TODO: assuming turbine always next
         self.tOut = float(input("Enter the Turbine Inlet Temp: "))
 
-        #adding to engine
-        engine.addComponent(self)
-
         print(f'\nP out = {self.pOut}\n')
 
     def __str__(self) -> str:
         print(f"({self.stationStart}): P={self.pIn} T={self.tIn}")
-        print("    |_____||_____|")
-        print(r"   //\    ||    /\\")
-        print(r"  //  \   ||   /  \\")
-        print(r"  \\  /   ||   \  //")
-        print(r"   \\/____||____\//")
-        print("    |     ||     |")
+        print("        |_____||_____|")
+        print(r"       //\    ||    /\\")
+        print(r"      //  \   ||   /  \\")
+        print(r"      \\  /   ||   \  //")
+        print(r"       \\/____||____\//")
+        print("        |     ||     |")
         return("")
 
     # Get
@@ -161,13 +275,13 @@ class Combustor:
 class Turbine:
 
     # Constructor
-    def __init__(self, pIn, tIn, stationStart, gamma, cp, engine: Engine):
+    def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
         #initialize params
         self.pIn = pIn
         self.tIn = tIn
         self.gamma = gamma
         self.cp = cp
-        self.stationStart = stationStart
+        self.stationStart = engine.getStation()
 
         #for checking
         efficiencyType = "Polytropic"
@@ -176,6 +290,8 @@ class Turbine:
         #Check for pressure ratio
         print("\nIs the turbine pressure ratio known?")
         choice = int(input("(1) yes\n(2) no\n"))
+
+        #TODO: turbine pressure can be unknown but still use polytropic --> HW 2b
 
         #get pressure ratio
         if choice == 1: 
@@ -199,19 +315,18 @@ class Turbine:
         #polytropic
         if pRatioCheck:
             self.etaPoly = eta
-            self.tOut, self.delT = ae.turbPolyTstag(tIn, eta, self.pRatio, gamma)
+            self.tOut, self.delT = self.turbPolyTstag()
 
         #isentropic
         else:
             self.etaIsen = eta
-            self.pRatio = ae.turbPratio(tIn, self.delT, eta, gamma)
+            self.pRatio = self.turbPratio()
 
         # get pout and work
         self.pOut = pIn/self.pRatio
-        self.work = ae.turbWork(cp, self.delT, engine.getEtaM())
+        self.work = self.turbWork(engine.getEtaM())
 
-        #adding to engine
-        engine.addComponent(self)
+        #adding work to engine
         engine.setTurbineWork(self.work)
 
         print(f'\nP out = {self.pOut}')
@@ -219,14 +334,15 @@ class Turbine:
         print(f'Temp Out = {self.tOut}')
         print(f'Turbine Work = {self.work}\n')
 
+    #printing
     def __str__(self) -> str:
         print(f"({self.stationStart}): P={self.pIn} T={self.tIn}")
-        print("    |     ||     |")
-        print(R"   /      ||      \ ")
-        print(R"  / -------------- \ ")
-        print(R" /        ||        \ ")
-        print(R"/ ------------------ \ ")
-        print("|         ||          |")
+        print("        |     ||     |")
+        print(R"       /      ||      \ ")
+        print(R"      / -------------- \ ")
+        print(R"     /        ||        \ ")
+        print(R"    / ------------------ \ ")
+        print("    |         ||          |")
         return("")
     
     # Get
@@ -234,3 +350,110 @@ class Turbine:
     def getTout(self): return self.tOut
     def getPout(self): return self.pOut
     def getStation(self): return self.stationStart
+
+    #Math
+    #TODO: not used
+    def turbTstag(self, T, etaT, pRatio, gamma):
+        exp = (gamma-1)/gamma
+        delT = etaT*T*(1-((1/pRatio)**exp))
+        tOut = T-delT
+
+        return tOut, delT
+
+    def turbPolyTstag(self):
+        T = self.tIn
+        etaT = self.etaPoly
+        pRatio = self.pRatio
+        gamma = self.gamma
+        
+        exp = etaT*(gamma-1)/gamma
+        tRatio = pRatio**exp
+        tOut = T/tRatio
+        delT = T - tOut
+
+        return tOut, delT
+
+    def turbPratio(self):
+        #assuming only for isentropic
+        T = self.tIn
+        delT = self.delT
+        etaT = self.etaIsen
+        gamma = self.gamma
+        
+        pRatio = (etaT*T/(etaT*T-delT))**(gamma/(gamma-1))
+
+        return pRatio
+
+    def turbWork(self, etaM):
+        cp = self.cp
+        delT = self.delT
+
+        w = cp*delT*etaM
+
+        return w
+    
+class Nozzle:
+
+    def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
+        #initialize params
+        self.pIn = pIn
+        self.tIn = tIn
+        self.gamma = gamma
+        self.cp = cp
+        self.stationStart = engine.getStation()
+
+        self.eta = float(input("\nEnter Nozzle Isentropic Efficiency: "))
+
+        self.pRatio = pIn/engine.getPa()
+        self.critPR = self.critPRatio()
+
+        #choked
+        if self.pRatio > self.critPR:
+            print("\nNozzle is choked")
+            self.R = float(input("Enter R: "))
+
+            self.pOut = pIn*self.nozzlePratio()
+            self.tOut = tIn*self.nozzleTratio()
+            self.rhoOut = self.nozzleRho()
+            #TODO: consider being owned by engine
+            self.Cj = self.nozzleV()
+
+        print(f'\nP out = {self.pOut}')
+        print(f'Temp Out = {self.tOut}')
+        print(f'Rho Out = {self.rhoOut}')
+        print(f'Cj = {self.Cj}')
+
+    #printing
+    def __str__(self) -> str:
+        print(f"({self.stationStart}): P={self.pIn} T={self.tIn}")
+        print("    |                     |")
+        print(r"     \                   /")
+        print(r"      \                 /")
+        print(r"       \               /")
+        print("        @             @")
+        return("")
+    
+    #Math
+    def critPRatio(self):
+        etaJ = self.eta
+        gamma = self.gamma
+
+        den = (1-((1/etaJ)*(gamma-1)/(gamma+1)))**(gamma/(gamma-1))
+        pRatio = 1/den
+        
+        return pRatio
+    
+    def nozzlePratio(self):
+        #Pout/Pin
+        return (1/self.critPR)
+
+    def nozzleTratio(self):
+        #Tout/Tin
+        return (2/(self.gamma+1))
+    
+    def nozzleRho(self):
+        return (self.pOut/(self.R*self.tOut))
+    
+    def nozzleV(self):
+        #assuming R needs to be /1000
+        return np.sqrt(self.gamma*self.R*self.tOut*1000)
