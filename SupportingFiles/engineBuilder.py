@@ -8,6 +8,9 @@ class Engine:
     compressorWork = 0
     turbineWork = 0
     Ca = 0
+    mTotal = 0
+    mCold = 0
+    mHot = 0
 
     def __init__(self, etaM, pa, Ta, startStation):
         self.etaM = etaM
@@ -45,6 +48,13 @@ class Engine:
 
     def setCa(self, Ca): self.Ca = Ca
 
+    def setMassFlow(self, m, BPR = 0):
+        self.mTotal = m
+        
+        if BPR != 0:
+            self.mCold = m*BPR/(BPR+1)
+            self.mHot = m/(BPR+1)
+
     #get
     def getEtaM(self): return self.etaM
     def getWorkC(self): return self.compressorWork
@@ -55,6 +65,8 @@ class Engine:
 
 
 class Inlet:
+    
+    #Constructor
     def __init__(self, gamma, cp, engine: Engine):
         #set variables from params
         self.gamma = gamma
@@ -79,6 +91,7 @@ class Inlet:
         print(f'Temp Out = {self.tOut}')
         print("\n")
 
+    #Printing
     def __str__(self) -> str:
         print(f"({self.stationStart}): P={self.pIn} T={self.tIn}")
         print("    ()                  ()")
@@ -117,6 +130,30 @@ class Inlet:
 
 class Fan:
 
+    #attributes
+    compPolyEta = 0
+
+    #Constructor
+    def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
+        #setting attributes
+        self.pIn = pIn
+        self.tIn = tIn
+        self.gamma = gamma
+        self.cp = cp
+        self.stationStart = engine.getStation()
+
+        self.compPolyEta = float(input("Enter the Compressor Polytropic Efficiency: "))
+        self.FPR = float(input("Enter Fan Pressure Ratio: "))
+        self.BPR = float(input("Enter Engine BPR: "))
+
+        self.pOut = self.fanPstag()
+        self.tOut = self.fanTstag()
+
+        
+
+        #TODO: add fan nozzle
+        
+
     def __str__(self) -> str:
         #TODO: add station, p, T
         print(f"(): P= T=")
@@ -127,10 +164,26 @@ class Fan:
         print("                           ")
         print(r"//\\                    //\\")
         return("")
+    
+    def fanPstag(self): 
+        pOut = self.FPR*self.pIn
+        return pOut
+
+    def fanTstag(self):
+        gamma = self.gamma
+
+        exp = (gamma-1)/(self.compPolyEta*gamma)
+        tRatio = self.FPR**exp
+        tOut = tRatio*self.tIn
+
+        return tOut
+        
+    #TODO: add choke test
         
 
 class Compressor:
 
+    #TODO: consider moving more into functions
     # Constructor
     def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
         self.pIn = pIn
@@ -192,6 +245,7 @@ class Compressor:
     def getPout(self): return self.pOut
     def getStation(self): return self.stationStart
 
+    #TODO: consider not returning but setting directly
     #Math
     #TODO: not used
     def compIsoEfficiency(self, T01, T02, pRatio, gamma=1.4):

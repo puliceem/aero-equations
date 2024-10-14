@@ -94,9 +94,9 @@ def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
         else: print("Make a selection from the list")
 
         if selection > 0 and selection < 7:
+            #TODO: make engine handle this
             pIn = component.getPout()
             tIn = component.getTout()
-            #TODO: determine if this should happen here or in classes
             engine.addComponent(component)
 
     print("\n")
