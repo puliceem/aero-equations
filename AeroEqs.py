@@ -45,22 +45,14 @@ def inertialAcceleration( v, vDot, omega ):
 
 def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
     selection = 1
-    tOut = 0
-    pOut = 0
 
-    pa = float(input("Enter ambient pressure: "))
-    Ta = float(input("Enter ambient temp: "))
-    mEta = float(input("Enter Mechanical Efficiency: "))
-    stationStart = int(input("Enter the first station number: "))
-    print("\n")
-
-    engine = eb.Engine(mEta, pa, Ta, stationStart)
-
-    pIn = pa
-    tIn = Ta
+    engine = eb.Engine(gammaA, gammaG, cpa, cpg)
+    pIn = engine.pa
+    tIn = engine.Ta
 
     while selection != 0:
-        print("Select a station from the list")
+        #TODO: make engine handle this
+        print("\nSelect a station from the list")
         selection = int(input("(1) Intake\n(2) Fan\n(3) Compressor\n(4) Combuster\n(5) Turbine\n(6) Nozzle\n(0) Stop\n"))
 
         # Stop
@@ -72,7 +64,7 @@ def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
 
         #fan
         elif selection == 2:
-            #TODO: add functionality
+            component = eb.Fan(pIn, tIn, gammaA, cpa, engine)
             pass
 
         # Compressor
@@ -82,7 +74,7 @@ def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
         # Combuster
         # assuing no heat exchanger
         elif selection == 4:
-            component = eb.Combustor(pIn, pOut, engine)
+            component = eb.Combustor(pIn, tIn, engine)
 
         #Turbine
         elif selection == 5:
