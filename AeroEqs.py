@@ -58,6 +58,141 @@ def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
     print("\n")
     print(engine)
 
+#Egnine Calculations
+def thrust(mDot, C, Ca, A, p, pa): return mDot*(C-Ca) + A*(p-pa)
+
+def nozzleArea(mDot, rho, C): return mDot/(rho*C)
+
+def fuelFlow(turbInT, combInT, etaB, cpa, cpg): 
+    delH = -43100
+    f = (cpg*turbInT - cpa*combInT)/(etaB*(delH - cpg*turbInT))
+    
+    return f
+
+def SFC(fuelFlow, w): return fuelFlow/w
+
+def fanMassFlow(m, BPR):
+    mCold = m*BPR/(BPR+1)
+    mHot = m/(BPR+1)
+
+    return mCold, mHot
+
+#Inlet Calculations
+def inletPstagStatic(Ta, Ca, cp, gamma, etaI, pStatic=0):
+    exp = gamma/(gamma-1)
+    pRatio = (1+(etaI*Ca**2/(2*cp*Ta*1000)))**exp
+
+    #only pRatio
+    if pStatic == 0: return pRatio
+    #pratio and pStag (if p static given)
+    else: 
+        pStag = pRatio*pStatic
+        return pRatio, pStag
+    
+def inletTstag(Ta, Ca, cp): 
+    #assuming Ca = m/s
+    return Ta+(Ca**2/(2*cp*1000))
+    
+#Fan Calculations
+def fanPstag(FPR, pIn): return FPR*pIn
+
+def fanTstag(tIn, gamma, etaFpoly, FPR):
+    exp = (gamma-1)/(etaFpoly*gamma)
+    tRatio = FPR**exp
+    tOut = tRatio*tIn
+
+    return tRatio, tOut
+
+#Compressor Calculations
+def compIsoEfficiency(self, T01, T02, pRatio, gamma=1.4):
+    exp = (gamma-1)/gamma
+    eta = T01*(pRatio**(gamma) - 1)/(T02 - T01)
+    return eta
+
+def compPolyEfficiency(pRatio, tRatio, gamma=1.4):
+    exp = (gamma-1)/gamma
+    eta = (np.log(pRatio)**exp)/np.log(tRatio)
+    return eta
+
+def compTstag(tIn, etaCisen, pRatio, gamma):
+    #assuming only used for isentropic
+    exp = (gamma-1)/gamma
+    delT = (tIn/etaCisen)*((pRatio**exp)-1)
+    tOut = delT+tIn
+
+    return tOut, delT
+
+def compPolyTstag(tIn, etaCpoly, pRatio, gamma):
+    #assuming only used for polytropic
+    exp = (gamma-1)/(etaCpoly*gamma)
+    tRatio = pRatio**exp
+    tOut = tIn*tRatio
+    delT = tOut - tIn
+
+    return tOut, delT
+
+def compWork(delT, cp, etaM): return cp*delT/etaM
+
+#Turbine Calculations
+def turbTstag(tIn, etaTisen, pRatio, gamma):
+    #assuming only isentropic
+    exp = (gamma-1)/gamma
+    delT = etaTisen*tIn*(1-((1/pRatio)**exp))
+    tOut = tIn-delT
+
+    return tOut, delT
+
+def turbPolyTstag(tIn, etaTpoly, pRatio, gamma):
+    #assuming only polytropic
+    exp = etaTpoly*(gamma-1)/gamma
+    tRatio = pRatio**exp
+    tOut = tIn/tRatio
+    delT = tIn - tOut
+
+    return tOut, delT
+
+def turbPratio(tIn, delT, etaTisen, gamma):
+    #assuming only for isentropic
+    return (etaTisen*tIn/(etaTisen*tIn-delT))**(gamma/(gamma-1))
+
+
+def turbWork(delT, cp, etaM): return cp*delT*etaM
+
+#Nozzle Calculations
+def critPRatio(gamma, etaJ):
+    den = (1-((1/etaJ)*(gamma-1)/(gamma+1)))**(gamma/(gamma-1))
+    pRatio = 1/den
+    
+    return pRatio
+
+def chokedPratio(critPR, pIn=0):
+    #Pout/Pin
+    pRatio = (1/critPR)
+
+    #only pRatio
+    if pIn == 0: return pRatio
+    #pratio and pStag (if p static given)
+    else: 
+        pStag = pRatio*pIn
+        return pRatio, pStag
+
+def chokedTratio(gamma, tIn=0):
+    #TStaticOut/Tin
+    tRatio = (2/(gamma+1))
+
+    #only pRatio
+    if tIn == 0: return tRatio
+    #pratio and pStag (if p static given)
+    else: 
+        tStag = tStag*tIn
+        return tRatio, tStag
+
+def nozzleRho(pOut, tOut, R): return (pOut/(R*tOut))
+
+def nozzleV(tOut, gamma, R):
+    #assuming R needs to be /1000
+    return np.sqrt(gamma*R*tOut*1000)
+
 #TODO: DOES NOT WORK
 def machFromAreaRatio(A, Astar, gamma=1.4):
     sol = A/Astar
