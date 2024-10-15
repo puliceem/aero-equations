@@ -26,6 +26,9 @@ class Engine:
         self.etaM = float(input("Enter Mechanical Efficiency: "))
         self.station = int(input("Enter the first station number: "))
 
+        self.pIn = self.pa
+        self.tIn = self.Ta
+
     #printing
     def __str__(self) -> str:
 
@@ -39,9 +42,51 @@ class Engine:
         return("")
 
     #methods
-    def addComponent(self, component):
-        self.station += 1
+    def addComponent(self, selection):
+        gammaA = self.gammaA
+        gammaG = self.gammaG
+        cpa = self.cpa
+        cpg = self.cpg
+        pIn = self.pIn
+        tIn = self.tIn
+
+        # Inlet
+        if selection == 1:
+            component = Inlet(gammaA, cpa, self)
+
+        #fan
+        elif selection == 2:
+            component = Fan(pIn, tIn, gammaA, cpa, self)
+            pass
+
+        # Compressor
+        elif selection == 3:
+            component = Compressor(pIn, tIn, gammaA, cpa, self)
+
+        # Combuster
+        # assuing no heat exchanger
+        elif selection == 4:
+            component = Combustor(pIn, tIn, self)
+
+        #Turbine
+        elif selection == 5:
+            tIn = float(input("\nEnter the Turbine Inlet Temp: "))
+            component = Turbine(pIn, tIn, gammaG, cpg, self)
+
+        elif selection == 6: 
+            component = Nozzle(pIn, tIn, gammaG, cpg, self)
+
         self.components.append(component)
+        self.pIn = component.pOut
+        self.tIn = component.tOut
+
+        self.station += 1
+
+        #update fan nozzle exit station number
+        if any(isinstance(component, Fan) for component in self.components): component.nozzle.stationStart = self.station+1
+
+    #post assembly
+
 
     #set
     def setCompressorWork(self, work):
@@ -75,7 +120,7 @@ class Inlet:
 
         #get speed (engine) and efficiency (inlet)
         #assuming inlet means airplane
-        engine.Ca(float(input("\nEnter aircraft speed (m/s): ")))
+        engine.Ca = float(input("\nEnter aircraft speed (m/s): "))
         eta = float(input("Enter Intake Isentropic Efficiency: "))
 
         #set p and t in
@@ -181,7 +226,6 @@ class Fan:
 
 class Compressor:
 
-    #TODO: consider moving more into functions
     # Constructor
     def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
         self.pIn = pIn
@@ -202,17 +246,13 @@ class Compressor:
             if efficiencyChoice != 1 and efficiencyChoice != 2:
                 efficiencyChoice = 0
                 print("Select from the list given")
-
-            eta = float(input("\nEnter Compressor Efficiency: "))
-            
-            #isentropic
-            if efficiencyChoice == 1: 
-                self.etaIsen = eta
-                self.tOut, self.delT = self.compTstag()
-            #polytropic
             else:
-                self.etaPoly = eta
-                self.tOut, self.delT = self.compPolyTstag()
+                self.eta = float(input("\nEnter Compressor Efficiency: "))
+                
+                #isentropic
+                if efficiencyChoice == 1: self.tOut, self.delT = self.compTstag()
+                #polytropic
+                else: self.tOut, self.delT = self.compPolyTstag()
 
         work = self.compWork(engine.etaM)
 
@@ -259,7 +299,7 @@ class Compressor:
     def compTstag(self):
         #assuming only used for isentropic
         T = self.tIn
-        eta = self.etaIsen
+        eta = self.eta
         pRatio = self.pRatio
         gamma = self.gamma
         
@@ -272,7 +312,7 @@ class Compressor:
     def compPolyTstag(self):
         #assuming only used for polytropic
         T = self.tIn
-        etaC = self.etaPoly
+        etaC = self.eta
         pRatio = self.pRatio
         gamma = self.gamma
 
@@ -302,9 +342,8 @@ class Combustor:
         self.pDrop = float(input("\nEnter pressure drop across combustor: "))
         self.pOut = pIn - self.pDrop
         
-        #assuming turbine always next
-        #TODO: move to engine prompt when complete
-        self.tOut = float(input("Enter the Turbine Inlet Temp: "))
+        #placeholder for turbine inlet temp
+        self.tOut = tIn
 
         print(f'\nP out = {self.pOut}\n')
 
@@ -328,6 +367,7 @@ class Turbine:
 
     # Constructor
     def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
+        #TODO: need to account for multiple turb/comp --> will alwasy take total comp work
         #initialize params
         self.pIn = pIn
         self.tIn = tIn
@@ -336,19 +376,33 @@ class Turbine:
         self.stationStart = engine.station
 
         #for checking
-        efficiencyType = "Polytropic"
-        pRatioCheck = True
+        efficiencyType = "Isentropic"
+        pRatioCheck = False
 
         #Check for pressure ratio
         print("\nIs the turbine pressure ratio known?")
-        choice = int(input("(1) yes\n(2) no\n"))
+        pChoice = int(input("(1) yes\n(2) no\n"))
 
         #TODO: turbine pressure can be unknown but still use polytropic --> HW 2b
 
         #get pressure ratio
-        if choice == 1: 
-            #assuming always polytropic
+        if pChoice == 1: 
             self.pRatio = float(input("\nEnter Turbine pressure ratio: "))
+            pRatioCheck = True
+            efficiencyChoice = 0
+
+            print("\nWhat Efficiency is available?")
+            while efficiencyChoice == 0:
+
+                efficiencyChoice = int(input("(1) Isentropic\n(2) Polytropic\n"))
+
+                if efficiencyChoice != 1 and efficiencyChoice != 2:
+                    efficiencyChoice = 0
+                    print("Select from the list given")
+                else:
+                    #polytropic
+                    if efficiencyChoice == 2: 
+                        efficiencyType = "Polytropic"
         
         #get work to find pressure ratio
         else:
@@ -358,21 +412,15 @@ class Turbine:
             self.delT = cWork/cp
             self.tOut = tIn-self.delT
 
-            efficiencyType = "isentropic"
-
-            pRatioCheck = False
-
-        eta = float(input(f"\nEnter Turbine {efficiencyType} Efficiency: "))
+        self.eta = float(input(f"\nEnter Turbine {efficiencyType} Efficiency: "))
 
         #polytropic
         if pRatioCheck:
-            self.etaPoly = eta
-            self.tOut, self.delT = self.turbPolyTstag()
+            if efficiencyChoice == 2: self.tOut, self.delT = self.turbPolyTstag()
+            else: self.tOut, self.delT = self.turbTstag()
 
         #isentropic
-        else:
-            self.etaIsen = eta
-            self.pRatio = self.turbPratio()
+        else: self.pRatio = self.turbPratio()
 
         # get pout and work
         self.pOut = pIn/self.pRatio
@@ -403,17 +451,16 @@ class Turbine:
     def getStation(self): return self.stationStart
 
     #Math
-    #TODO: not used
-    def turbTstag(self, T, etaT, pRatio, gamma):
-        exp = (gamma-1)/gamma
-        delT = etaT*T*(1-((1/pRatio)**exp))
-        tOut = T-delT
+    def turbTstag(self):
+        exp = (self.gamma-1)/self.gamma
+        delT = self.eta*self.tIn*(1-((1/self.pRatio)**exp))
+        tOut = self.tIn-delT
 
         return tOut, delT
 
     def turbPolyTstag(self):
         T = self.tIn
-        etaT = self.etaPoly
+        etaT = self.eta
         pRatio = self.pRatio
         gamma = self.gamma
         
@@ -428,7 +475,7 @@ class Turbine:
         #assuming only for isentropic
         T = self.tIn
         delT = self.delT
-        etaT = self.etaIsen
+        etaT = self.eta
         gamma = self.gamma
         
         pRatio = (etaT*T/(etaT*T-delT))**(gamma/(gamma-1))
@@ -544,8 +591,7 @@ class FanNozzle(Nozzle):
         self.tIn = tIn
         self.gamma = gamma
         self.cp = cp
-        #TODO: figure out how to fix station
-        self.stationStart = 8
+        self.stationStart = 0
 
         if engine.etaJ == 0: engine.etaJ = float(input("\nEnter Nozzle Isentropic Efficiency: "))
 

@@ -47,49 +47,13 @@ def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
     selection = 1
 
     engine = eb.Engine(gammaA, gammaG, cpa, cpg)
-    pIn = engine.pa
-    tIn = engine.Ta
 
     while selection != 0:
-        #TODO: make engine handle this
         print("\nSelect a station from the list")
         selection = int(input("(1) Intake\n(2) Fan\n(3) Compressor\n(4) Combuster\n(5) Turbine\n(6) Nozzle\n(0) Stop\n"))
 
-        # Stop
         if selection == 0: break
-
-        # Inlet
-        elif selection == 1:
-            component = eb.Inlet(gammaA, cpa, engine)
-
-        #fan
-        elif selection == 2:
-            component = eb.Fan(pIn, tIn, gammaA, cpa, engine)
-            pass
-
-        # Compressor
-        elif selection == 3:
-            component = eb.Compressor(pIn, tIn, gammaA, cpa, engine)
-
-        # Combuster
-        # assuing no heat exchanger
-        elif selection == 4:
-            component = eb.Combustor(pIn, tIn, engine)
-
-        #Turbine
-        elif selection == 5:
-            component = eb.Turbine(pIn, tIn, gammaG, cpg, engine)
-
-        elif selection == 6: 
-            component = eb.Nozzle(pIn, tIn, gammaG, cpg, engine)
-
-        else: print("Make a selection from the list")
-
-        if selection > 0 and selection < 7:
-            #TODO: make engine handle this
-            pIn = component.getPout()
-            tIn = component.getTout()
-            engine.addComponent(component)
+        else: engine.addComponent(selection)
 
     print("\n")
     print(engine)
