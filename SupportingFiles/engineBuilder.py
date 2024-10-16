@@ -177,40 +177,45 @@ class Engine:
     #trying to calculate
     #TODO: make except add uncalculated to extraAnalysis with check eq
     def analysis(self):
-        #thrust
-        try: 
-            self.Force()
+        #check mass
+         if self.checkMassFlow():
 
-            if len(self.engineT) == 2:
-                print(f"Cold Stream Thrust: {self.engineT[0]}")
-                print(f"Hot Stream Thrust: {self.engineT[1]}")
+            #area
+            try:
+                self.Area()
 
-            print(f"Total Engine Thrust: {self.thrustTotal}")
+                if len(self.engineA) == 2:
+                    print(f"Fan Nozzle Area: {self.engineA[0]}")
+                
+                print(f"Core Nozzle Area: {self.engineA[1]}")
 
-        except: print("Engine thrust cannot be found")
-        
-        #area
-        try:
-            self.Area()
+            except: print("Nozzle area cannot be found")
 
-            if len(self.engineA) == 2:
-                print(f"Fan Nozzle Area: {self.engineA[0]}")
+            #thrust
+            try: 
+                self.Force()
+
+                if len(self.engineT) == 2:
+                    print(f"Cold Stream Thrust: {self.engineT[0]}")
+                    print(f"Hot Stream Thrust: {self.engineT[1]}")
+
+                print(f"Total Engine Thrust: {self.thrustTotal}")
+
+            except: print("Engine thrust cannot be found")
             
-            print(f"Core Nozzle Area: {self.engineA[1]}")
+            #fuel flow
+            try:
+                self.fuelFlow()
+                print(f"Fuel Flow: {self.f}")
+            
+            except: print("Fuel Flow cannot be found")
 
-        except: print("Nozzle area cannot be found")
+            #sfc
+            try: 
+                self.SFC()
+                print(f"SFC: {self.sfc}")
 
-        try:
-            self.fuelFlow()
-            print(f"Fuel Flow: {self.f}")
-        
-        except: print("Fuel Flow cannot be found")
-
-        try: 
-            self.SFC()
-            print(f"SFC: {self.sfc}")
-
-        except: print("SFC cannot be found")
+            except: print("SFC cannot be found")
 
 
     def Force(self):
@@ -351,10 +356,10 @@ class Fan:
     #printing
     def __str__(self) -> str:
         print(f"({self.stationStart}): P={self.pIn} T={self.tIn}")
-        print(r"  //   ____     ____    \\")
-        print(r" ||   /    \   /    \    ||")
+        print(r"  //   ____             \\")
+        print(r" ||   /    \             ||")
         print(r" ||  (-------X-------)   ||")
-        print(r" ||   \____/   \____/    ||")
+        print(r" ||            \____/    ||")
         print("                           ")
         print(r"//\\                    //\\")
         #TODO: looks horrible
@@ -535,12 +540,7 @@ class Turbine:
         
         #do power balance to get t
         else: self.powerBalance(engine)
-
-
-        #TODO: removed isentropic no pRatio --> find pRatio (turbPratio)
-        #need to add back if power balance cannot solve mod2 ex2.1
         
-
         # get pout and work
         self.pOut = pIn/self.pRatio
         self.turbWork(engine.etaM)
