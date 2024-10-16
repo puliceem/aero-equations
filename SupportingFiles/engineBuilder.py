@@ -22,6 +22,7 @@ class Engine:
     thrustTotal = 0
     f = 0
     sfc = 0
+    extraAnalysis = {}
 
     def __init__(self, gammaA, gammaG, cpa, cpg):
         self.gammaA = gammaA
@@ -125,6 +126,7 @@ class Engine:
         return foundComponent
 
     #post assembly
+    #TODO: make checks for all typical output params
     def checkMassFlow(self):
         #mass flow
         if self.mTotal == 0:
@@ -172,6 +174,7 @@ class Engine:
                 return False
 
     #trying to calculate
+    #TODO: make except add uncalculated to extraAnalysis with check eq
     def analysis(self):
         #thrust
         try: 
@@ -413,7 +416,6 @@ class Compressor:
 
         print(f'\nP out = {self.pOut}')
         print(f'Temp Out = {self.tOut}')
-        print(f'Change in Temp = {self.delT}')
         print(f'Compressor Work = {self.work}')
 
     def __str__(self) -> str:
@@ -546,7 +548,6 @@ class Turbine:
         engine.setTurbineWork(self.work)
 
         print(f'\nP out = {self.pOut}')
-        print(f'delta T = {self.delT}')
         print(f'Temp Out = {self.tOut}')
         print(f'Turbine Work = {self.work}')
 
@@ -597,10 +598,11 @@ class Turbine:
         self.powerBalancePratio()
 
     def compressorWork(self, engine: Engine):
-        #TODO: may have to handle "False" returns
         comp = engine.findComponent(Compressor, first=False)
         if comp: return comp.work
-        else: pass
+        else: 
+            #TODO: if pass happens what happens next?
+            pass
 
     # Get
     def getTout(self): return self.tOut
@@ -661,7 +663,6 @@ class Nozzle:
 
         print(f'\nP(static) out = {self.pStaticOut}')
         print(f'Temp(static) Out = {self.tStaticOut}')
-        print(f'Rho Out = {self.rhoOut}')
         #assuming last or only C calculated
         print(f'Cj = {engine.engineC[-1]}')
 
@@ -750,7 +751,6 @@ class FanNozzle(Nozzle):
 
         print(f'\nP(static) out = {self.pStaticOut}')
         print(f'Temp(static) Out = {self.tStaticOut}')
-        print(f'Rho Out = {self.rhoOut}')
         #assuming alwasy first to have C calculated
         print(f'Cj = {engine.engineC[0]}')
 

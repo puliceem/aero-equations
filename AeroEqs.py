@@ -75,7 +75,7 @@ def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
     print("\n")
     print(engine)
 
-    
+    engine.analysis()
 
 #Egnine Calculations
 def thrust(mDot, C, Ca, A, p, pa): return mDot*(C-Ca) + A*(p-pa)
@@ -83,12 +83,12 @@ def thrust(mDot, C, Ca, A, p, pa): return mDot*(C-Ca) + A*(p-pa)
 def nozzleArea(mDot, rho, C): return mDot/(rho*C)
 
 def fuelFlow(turbInT, combInT, etaB, cpa, cpg): 
-    delH = -43100
+    delH = 43100
     f = (cpg*turbInT - cpa*combInT)/(etaB*(delH - cpg*turbInT))
     
     return f
 
-def SFC(fuelFlow, w): return fuelFlow/w
+def SFC(fuelFlow, w): return 3600*fuelFlow/w
 
 def fanMassFlow(m, BPR):
     mCold = m*BPR/(BPR+1)
