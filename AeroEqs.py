@@ -49,8 +49,10 @@ def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
     engine = eb.Engine(gammaA, gammaG, cpa, cpg)
 
     while selection != 0:
+        #TODO: need to put safeguard on entering numbers
         print("\nSelect a station from the list")
-        selection = int(input("(1) Intake\n(2) Fan\n(3) Compressor\n(4) Combuster\n(5) Turbine\n(6) Nozzle\n(0) Stop\n"))
+        print("(1) Intake\n(2) Fan\n(3) Compressor\n(4) Combuster\n(5) Turbine\n(6) Nozzle")
+        selection = int(input("\n(9) Remove Component\n(0) Stop\n"))
 
         if selection == 0: break
         else: engine.addComponent(selection)
@@ -76,6 +78,8 @@ def fanMassFlow(m, BPR):
     mHot = m/(BPR+1)
 
     return mCold, mHot
+
+def power(mDot, w): return mDot*w
 
 #Inlet Calculations
 def inletPstagStatic(Ta, Ca, cp, gamma, etaI, pStatic=0):
@@ -136,6 +140,7 @@ def compWork(delT, cp, etaM): return cp*delT/etaM
 #Turbine Calculations
 def turbTstag(tIn, etaTisen, pRatio, gamma):
     #assuming only isentropic
+    #tin - tout
     exp = (gamma-1)/gamma
     delT = etaTisen*tIn*(1-((1/pRatio)**exp))
     tOut = tIn-delT
@@ -144,6 +149,7 @@ def turbTstag(tIn, etaTisen, pRatio, gamma):
 
 def turbPolyTstag(tIn, etaTpoly, pRatio, gamma):
     #assuming only polytropic
+    #tin - tout
     exp = etaTpoly*(gamma-1)/gamma
     tRatio = pRatio**exp
     tOut = tIn/tRatio
@@ -155,8 +161,34 @@ def turbPratio(tIn, delT, etaTisen, gamma):
     #assuming only for isentropic
     return (etaTisen*tIn/(etaTisen*tIn-delT))**(gamma/(gamma-1))
 
-
 def turbWork(delT, cp, etaM): return cp*delT*etaM
+
+def fanPowerBalance(mDot, mh, cpa, cpg, etaM, fanTout, fanTin, turbTin=0):
+    #tin - tout
+    delT = mDot*cpa*(fanTout-fanTin)/(mh*etaM*cpg)
+
+    if turbTin == 0: return delT
+    else:
+        tOut = turbTin - delT
+        return tOut, delT
+    
+def compPowerBalance(cpa, cpg, etaM, compTout, compTin, turbTin=0):
+    #tin - tout
+    delT = cpa*(compTout-compTin)/(etaM*cpg)
+
+    if turbTin == 0: return delT
+    else:
+        tOut = turbTin - delT
+        return tOut, delT
+    
+def powerBalancePratio(tOut, tIn, etaPoly, gamma):
+    exp = etaPoly*(gamma-1)/gamma
+    tRatio = tIn/tOut
+
+    #pin/pout
+    pRatio = tRatio**(1/exp)
+    return pRatio
+
 
 #Nozzle Calculations
 def critPRatio(gamma, etaJ):
@@ -166,15 +198,15 @@ def critPRatio(gamma, etaJ):
     return pRatio
 
 def chokedPratio(critPR, pIn=0):
-    #Pout/Pin
+    #PstaticOut/Pin
     pRatio = (1/critPR)
 
     #only pRatio
     if pIn == 0: return pRatio
-    #pratio and pStag (if p static given)
+    #pratio and pStatic (if p in given)
     else: 
-        pStag = pRatio*pIn
-        return pRatio, pStag
+        pStatic = pRatio*pIn
+        return pRatio, pStatic
 
 def chokedTratio(gamma, tIn=0):
     #TStaticOut/Tin
@@ -182,16 +214,32 @@ def chokedTratio(gamma, tIn=0):
 
     #only pRatio
     if tIn == 0: return tRatio
-    #pratio and pStag (if p static given)
+    #tRatio and tStatic (if t in given)
     else: 
-        tStag = tStag*tIn
-        return tRatio, tStag
+        tStatic = tRatio*tIn
+        return tRatio, tStatic
 
-def nozzleRho(pOut, tOut, R): return (pOut/(R*tOut))
+def nozzleRho(pStatic, tStatic, R): return (pStatic/(R*tStatic))
 
-def nozzleV(tOut, gamma, R):
+def nozzleV(tOut, gamma, R, Mach=1):
     #assuming R needs to be /1000
-    return np.sqrt(gamma*R*tOut*1000)
+    return Mach*np.sqrt(gamma*R*tOut*1000)
+
+def notChokedToutRatio(etaJ, tOut, pa, pIn, gamma):
+    #Ttotal - T
+    delT = etaJ*tOut*(1-(pa/pIn)**((gamma-1)/gamma))
+    tStaticOut = tOut-delT
+    #Ttotal/T
+    tOutRato = tOut/tStaticOut
+
+    return tOutRato, tStaticOut
+
+def noChokedPoutRatio(tOutRatio, gamma): return tOutRatio**(gamma/(gamma-1))
+
+def nozzleMach(pOutRatio, gamma):
+    exp = (gamma-1)/gamma
+    return np.sqrt(((pOutRatio**exp)-1)*2/(gamma-1))
+
 
 #TODO: DOES NOT WORK
 def machFromAreaRatio(A, Astar, gamma=1.4):

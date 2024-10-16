@@ -61,10 +61,9 @@ class Engine:
         if selection == 1:
             component = Inlet(gammaA, cpa, self)
 
-        #fan
+        #Fan
         elif selection == 2:
             component = Fan(pIn, tIn, gammaA, cpa, self)
-            pass
 
         # Compressor
         elif selection == 3:
@@ -77,11 +76,17 @@ class Engine:
 
         #Turbine
         elif selection == 5:
-            tIn = float(input("\nEnter the Turbine Inlet Temp: "))
+            if not self.findComponent(Turbine): tIn = float(input("\nEnter the Turbine Inlet Temp: "))
             component = Turbine(pIn, tIn, gammaG, cpg, self)
 
+        #Nozzle
         elif selection == 6: 
             component = Nozzle(pIn, tIn, gammaG, cpg, self)
+
+        #Remove
+        elif selection == 9:
+            self.removeComponent()
+            return
 
         self.components.append(component)
         self.pIn = component.pOut
@@ -90,35 +95,63 @@ class Engine:
         self.station += 1
 
         #update fan nozzle exit station number
+        fan = self.findComponent(Fan)
+        if fan: fan.nozzle.stationStart = self.station+1
+
+    #Methods
+    def removeComponent(self):
+        #remove latest entry from list
+        self.components.pop()
+
+        #reset pIn tIn and station
+        component = self.components[-1]
+        self.pIn = component.pOut
+        self.tIn = component.tOut
+        self.station -= 1
+
+    def findComponent(self, type, first=True):
+        #assuming each component has a max of 2
+        foundComponent = False
+
         for component in self.components:
-            if isinstance(component, Fan): component.nozzle.stationStart = self.station+1
+            if isinstance(component, type): 
+                #assign index and iterate again if needed from 1 after
+                foundComponent = component
+
+                #break if first is to be found
+                if first: break
+
+        return foundComponent
 
     #post assembly
     #TODO: consider adding mass flow and power to the try methods
     def checkMassFlow(self):
         #mass flow
-        massFlowChoice = 0
-        print("Is mass flow known? ")
-        while massFlowChoice == 0:
+        if self.mTotal == 0:
+            massFlowChoice = 0
+            print("\nIs mass flow known? ")
+            while massFlowChoice == 0:
 
-            massFlowChoice = int(input("(1) Yes\n(2) No\n"))
+                massFlowChoice = int(input("(1) Yes\n(2) No\n"))
 
-            #reprompt
-            if massFlowChoice != 1 and massFlowChoice != 2:
-                massFlowChoice = 0
-                print("Select from the list given")
-            #Yes - mass flow known - set power too
-            elif massFlowChoice == 1: 
-                self.setMassFlow(float(input("Enter Total Mass Flow: ")))
-                self.power = self.totalWork*self.mTotal
-            #No - check if power known
-            else:
-                self.checkPower()
+                #reprompt
+                if massFlowChoice != 1 and massFlowChoice != 2:
+                    massFlowChoice = 0
+                    print("Select from the list given")
+                #Yes - mass flow known - set power too
+                elif massFlowChoice == 1: 
+                    self.setMassFlow(float(input("\nEnter Total Mass Flow: ")))
+                    self.power = self.totalWork*self.mTotal
+                    return True
+                #No - check if power known
+                else:
+                    return self.checkPower()
+        else: return True
 
     def checkPower(self):
         #power
         powerChoice = 0
-        print("Is power known? ")
+        print("\nIs power known? ")
         while powerChoice == 0:
 
             powerChoice = int(input("(1) Yes\n(2) No\n"))
@@ -129,12 +162,14 @@ class Engine:
                 print("Select from the list given")
             #Yes - power known - set massflow
             elif powerChoice == 1: 
-                self.power = float(input("Enter Power: "))
+                self.power = float(input("\nEnter Power: "))
                 massFlow = self.power/self.totalWork
                 self.setMassFlow(massFlow)
+
+                return True
             #No - power and massflow not known
             else:
-                pass
+                return False
 
     #trying to calculate
     #TODO: use try except (maybe somethign else) to find prompts
@@ -214,11 +249,10 @@ class Inlet:
 
         #calculate T and P
         self.inletPout(engine.Ca)
-        self.inletTstag
+        self.inletTstag(engine.Ca)
 
         print(f'\nP out = {self.pOut}')
         print(f'Temp Out = {self.tOut}')
-        print("\n")
 
     #Printing
     def __str__(self) -> str:
@@ -259,7 +293,7 @@ class Fan:
         self.cp = cp
         self.stationStart = engine.station
 
-        self.eta = float(input("Enter the Fan Polytropic Efficiency: "))
+        self.eta = float(input("\nEnter the Fan Polytropic Efficiency: "))
         self.FPR = float(input("Enter Fan Pressure Ratio: "))
         engine.BPR = float(input("Enter Engine BPR: "))
 
@@ -267,6 +301,9 @@ class Fan:
         self.fanTstag()
 
         self.nozzle = FanNozzle(self.pOut, self.tOut, gamma, cp, engine)
+
+        print(f'\nP out = {self.pOut}')
+        print(f'Temp Out = {self.tOut}')
 
     #printing
     def __str__(self) -> str:
@@ -277,6 +314,7 @@ class Fan:
         print(r" ||   \____/   \____/    ||")
         print("                           ")
         print(r"//\\                    //\\")
+        #TODO: looks horrible
         print(self.nozzle)
         return("")
     
@@ -297,6 +335,7 @@ class Compressor:
     tOut = 0
     tRatio = 0
     work = 0
+    power = 0
 
     # Constructor
     def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
@@ -337,7 +376,6 @@ class Compressor:
         print(f'Temp Out = {self.tOut}')
         print(f'Change in Temp = {self.delT}')
         print(f'Compressor Work = {self.work}')
-        print("\n")
 
     def __str__(self) -> str:
         print(f"({self.stationStart}): P={self.pIn} T={self.tIn}")
@@ -381,12 +419,12 @@ class Combustor:
 
         #efficiency
         #TODO: determine if this is necessary here or only in engine.fuelFlow
-        self.eta = float(input("\nEnter the Combustion Isentropic Efficiency: "))
+        self.eta = float(input("Enter the Combustion Isentropic Efficiency: "))
         
         #placeholder for turbine inlet temp
         self.tOut = tIn
 
-        print(f'\nP out = {self.pOut}\n')
+        print(f'\nP out = {self.pOut}')
 
     def __str__(self) -> str:
         print(f"({self.stationStart}): P={self.pIn} T={self.tIn}")
@@ -414,7 +452,6 @@ class Turbine:
 
     # Constructor
     def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
-        #TODO: need to account for multiple turb/comp --> will alwasy take total comp work
         #initialize params
         self.pIn = pIn
         self.tIn = tIn
@@ -424,50 +461,43 @@ class Turbine:
 
         #for checking
         efficiencyType = "Isentropic"
-        pRatioCheck = False
+        efficiencyChoice = 0
+
+        print("\nWhat Efficiency is available?")
+        while efficiencyChoice == 0:
+
+            efficiencyChoice = int(input("(1) Isentropic\n(2) Polytropic\n"))
+
+            #reprompt until correct choice given
+            if efficiencyChoice != 1 and efficiencyChoice != 2:
+                efficiencyChoice = 0
+                print("Select from the list given")
+            #polytropic
+            elif efficiencyChoice == 2: efficiencyType = "Polytropic"
+
+        #get turbine efficiency
+        self.eta = float(input(f"\nEnter Turbine {efficiencyType} Efficiency: "))
 
         #Check for pressure ratio
         print("\nIs the turbine pressure ratio known?")
         pChoice = int(input("(1) yes\n(2) no\n"))
 
-        #TODO: turbine pressure can be unknown but still use polytropic --> HW 2b
-
+        #TODO: should this default to powerBalance if possible?
         #get pressure ratio
         if pChoice == 1: 
             self.pRatio = float(input("\nEnter Turbine pressure ratio: "))
-            pRatioCheck = True
-            efficiencyChoice = 0
-
-            print("\nWhat Efficiency is available?")
-            while efficiencyChoice == 0:
-
-                efficiencyChoice = int(input("(1) Isentropic\n(2) Polytropic\n"))
-
-                #reprompt until correct choice given
-                if efficiencyChoice != 1 and efficiencyChoice != 2:
-                    efficiencyChoice = 0
-                    print("Select from the list given")
-                else:
-                    #polytropic
-                    if efficiencyChoice == 2: efficiencyType = "Polytropic"
-        
-        #get work to find pressure ratio
-        else:
-            #assuming always isentropic
-            cWork = engine.compressorWork
-
-            self.delT = cWork/cp
-            self.tOut = tIn-self.delT
-
-        self.eta = float(input(f"\nEnter Turbine {efficiencyType} Efficiency: "))
-
-        #polytropic
-        if pRatioCheck:
+            #poly
             if efficiencyChoice == 2: self.turbPolyTstag()
+            #isen
             else: self.turbTstag()
+        
+        #do power balance to get t
+        else: self.powerBalance(engine)
 
-        #isentropic
-        else: self.turbPratio()
+
+        #TODO: removed isentropic no pRatio --> find pRatio (turbPratio)
+        #need to add back if power balance cannot solve mod2 ex2.1
+        
 
         # get pout and work
         self.pOut = pIn/self.pRatio
@@ -479,7 +509,7 @@ class Turbine:
         print(f'\nP out = {self.pOut}')
         print(f'delta T = {self.delT}')
         print(f'Temp Out = {self.tOut}')
-        print(f'Turbine Work = {self.work}\n')
+        print(f'Turbine Work = {self.work}')
 
     #printing
     def __str__(self) -> str:
@@ -492,6 +522,47 @@ class Turbine:
         print("    |         ||          |")
         return("")
     
+    #methods
+    def powerBalance(self, engine: Engine):
+        #initilizing
+        component = False
+
+        #assumign max 2 compressors 1 fan
+        if engine.findComponent(Turbine):
+            #other turbines exist
+            
+            if engine.findComponent(Fan):
+                #fan exists
+                fan: Fan = engine.findComponent(Fan)
+                
+                #check/set mdot
+                if engine.checkMassFlow():
+                    #calculate T values
+                    self.fanPowerBalance(engine.mTotal, engine.mDot[1], fan.cp, engine.etaM, fan.tOut, fan.tIn, self.tIn)
+
+                    print(self.tOut)
+                #could be used as error --> triggered when mass flow not known and cant be found
+                else: pass
+
+            #find first compressor
+            else: component = engine.findComponent(Compressor)
+        
+        #first turbine
+        else:
+            #find last compressor
+            component = engine.findComponent(Compressor, first=False)
+
+        #calculate T values (compressor)
+        if component: self.compPowerBalance(component.cp, engine.etaM, component.tOut, component.tIn, self.tIn)
+
+        self.powerBalancePratio()
+
+    def compressorWork(self, engine: Engine):
+        #TODO: may have to handle "False" returns
+        comp = engine.findComponent(Compressor, first=False)
+        if comp: return comp.work
+        else: pass
+
     # Get
     def getTout(self): return self.tOut
     def getPout(self): return self.pOut
@@ -500,7 +571,7 @@ class Turbine:
     #Math
     def turbTstag(self):
         #assuming only isentropic
-        self.tOut, self.delT = ae.turbTstag(self.tIn, self.eta, self.gamma, self.pRatio)
+        self.tOut, self.delT = ae.turbTstag(self.tIn, self.eta, self.pRatio, self.gamma)
 
     def turbPolyTstag(self):
         #assuming only polytropic
@@ -511,17 +582,30 @@ class Turbine:
         self.pRatio = ae.turbPratio(self.tIn, self.delT, self.eta, self.gamma)
 
     def turbWork(self, etaM): self.work = ae.turbWork(self.delT, self.cp, etaM)
-    
+
+    def fanPowerBalance(self, mTotal, mh, cpa, etaM, fanTout, fanTin, turbTin):
+        self.tOut, self.delT = ae.fanPowerBalance(mTotal, mh, cpa, self.cp, etaM, fanTout, fanTin, turbTin=turbTin)
+
+    def compPowerBalance(self, cpa, etaM, compTout, compTin, turbTin):
+        self.tOut, self.delT = ae.compPowerBalance(cpa, self.cp, etaM, compTout, compTin, turbTin=turbTin)
+
+    def powerBalancePratio(self):
+        self.pRatio = ae.powerBalancePratio(self.tOut, self.tIn, self.eta, self.gamma)
+
+
 class Nozzle:
 
     #properties
     pOut = 0
     tOut = 0
+    tStaticOut = 0
+    pStaticOut = 0
     rhoOut = 0
     pRatio = 0
+    pOutRatio = 0
     tRatio = 0
+    tOutRatio = 0
     critPR = 0
-    Cj = 0
 
     # constructor
     def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
@@ -536,10 +620,11 @@ class Nozzle:
 
         self.chokeTest(engine)
 
-        print(f'\nP out = {self.pOut}')
-        print(f'Temp Out = {self.tOut}')
+        print(f'\nP(static) out = {self.pStaticOut}')
+        print(f'Temp(static) Out = {self.tStaticOut}')
         print(f'Rho Out = {self.rhoOut}')
-        print(f'Cj = {self.Cj}')
+        #assuming last or only C calculated
+        print(f'Cj = {engine.engineC[-1]}')
 
     #printing
     def __str__(self) -> str:
@@ -551,28 +636,7 @@ class Nozzle:
         print("        @             @")
         return("")
     
-    # Get
-    def getTout(self): return self.tOut
-    def getPout(self): return self.pOut
-    def getStation(self): return self.stationStart
-
-    #Math
-    def critPRatio(self, etaJ): self.critPR = ae.critPRatio(self.gamma, etaJ)
-    
-    def chokedPratio(self):
-        #Pout/Pin
-        self.pRatio, self.pOut = ae.chokedPratio(self.critPR, self.pIn)
-
-    def chokedTratio(self):
-        #TStaticOut/Tin
-        self.tRatio, self.tOut = ae.chokedTratio(self.gamma, self.tIn)
-    
-    def nozzleRho(self, R): self.rhoOut = ae.nozzleRho(self.pOut, self.tOut, R)
-    
-    def nozzleV(self, R):
-        #assuming R needs to be /1000
-        self.Cj = ae.nozzleV(self.tOut, self.gamma, R)
-    
+    #methods
     def chokeTest(self, engine: Engine):
         self.critPRatio(engine.etaJ)
         self.pRatio = self.pIn/engine.pa
@@ -586,27 +650,49 @@ class Nozzle:
             self.chokedPratio()
             self.chokedTratio()
             self.nozzleRho(engine.R)
-            self.nozzleV(engine.R)
+            engine.engineC.append(self.nozzleV(engine.R))
         #not choked
         else: 
-            #TODO: put equations in AeroEqs
             print("\nNozzle is not Choked")
-
-            gamma = self.gamma
 
             self.pOut = engine.pa
             self.tOut = self.tIn
 
-            delTstagTstatic = engine.etaJ*self.tOut*(1-(engine.pa/self.pIn)**((gamma-1)/gamma))
-            tStaticOut = self.tOut-delTstagTstatic
-            tStagStaticRatio = self.tOut/tStaticOut
+            self.notChokedToutRatio(engine.etaJ, engine.pa)
+            self.notChokedPoutRatio()
+            engine.engineC.append(self.notChokedCj(engine.R))
 
-            pStagStaticRatio = tStagStaticRatio**(gamma/(gamma-1))
-            
-            Mach = np.sqrt((pStagStaticRatio**((gamma-1)/gamma)-1)**(2/(gamma-1)))
-            a = np.sqrt(gamma*engine.R*tStaticOut)
-            c = Mach*a
+    # Get
+    def getTout(self): return self.tOut
+    def getPout(self): return self.pOut
+    def getStation(self): return self.stationStart
 
+    #Math
+    def critPRatio(self, etaJ): self.critPR = ae.critPRatio(self.gamma, etaJ)
+    
+    def chokedPratio(self):
+        #Pout/Pin
+        self.pRatio, self.pStaticOut = ae.chokedPratio(self.critPR, self.pIn)
+
+    def chokedTratio(self):
+        #TStaticOut/Tin
+        self.tRatio, self.tStaticOut = ae.chokedTratio(self.gamma, self.tIn)
+    
+    def nozzleRho(self, R): self.rhoOut = ae.nozzleRho(self.pStaticOut, self.tStaticOut, R)
+    
+    def nozzleV(self, R, Mach=1):
+        #assuming R needs to be /1000
+        return ae.nozzleV(self.tStaticOut, self.gamma, R, Mach)
+
+    def notChokedToutRatio(self, etaJ, pa):
+        #tStaticOut/Tin, T
+        self.tOutRatio, self.tStaticOut = ae.notChokedToutRatio(etaJ, self.tOut, pa, self.pIn, self.gamma)
+
+    def notChokedPoutRatio(self): self.pOutRatio = ae.noChokedPoutRatio(self.tOutRatio, self.gamma)
+
+    def notChokedCj(self, R):
+        Mach = ae.nozzleMach(self.pOutRatio, self.gamma)
+        self.nozzleV(R, Mach)
     
 class FanNozzle(Nozzle):
     
@@ -623,9 +709,11 @@ class FanNozzle(Nozzle):
 
         self.chokeTest(engine)
 
-        print(f'\nP out = {self.pOut}')
-        print(f'Temp Out = {self.tOut}')
+        print(f'\nP(static) out = {self.pStaticOut}')
+        print(f'Temp(static) Out = {self.tStaticOut}')
         print(f'Rho Out = {self.rhoOut}')
+        #assuming alwasy first to have C calculated
+        print(f'Cj = {engine.engineC[0]}')
 
     def __str__(self) -> str:
         print(f"({self.stationStart}): P={self.pOut} T={self.tOut}")
