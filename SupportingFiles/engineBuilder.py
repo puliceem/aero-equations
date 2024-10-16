@@ -18,7 +18,8 @@ class Engine:
     mDot = []
     engineA = []
     engineRho = []
-    thrust = 0
+    engineT = []
+    thrustTotal = 0
     f = 0
     sfc = 0
 
@@ -124,7 +125,6 @@ class Engine:
         return foundComponent
 
     #post assembly
-    #TODO: consider adding mass flow and power to the try methods
     def checkMassFlow(self):
         #mass flow
         if self.mTotal == 0:
@@ -172,7 +172,43 @@ class Engine:
                 return False
 
     #trying to calculate
-    #TODO: use try except (maybe somethign else) to find prompts
+    def analysis(self):
+        #thrust
+        try: 
+            self.Force()
+
+            if len(self.engineT) == 2:
+                print(f"Cold Stream Thrust: {self.engineT[0]}")
+                print(f"Hot Stream Thrust: {self.engineT[1]}")
+
+            print(f"Total Engine Thrust: {self.thrustTotal}")
+
+        except: print("Engine thrust cannot be found")
+        
+        #area
+        try:
+            self.Area()
+
+            if len(self.engineA) == 2:
+                print(f"Fan Nozzle Area: {self.engineA[0]}")
+            
+            print(f"Core Nozzle Area: {self.engineA[1]}")
+
+        except: print("Nozzle area cannot be found")
+
+        try:
+            self.fuelFlow()
+            print(f"Fuel Flow: {self.f}")
+        
+        except: print("Fuel Flow cannot be found")
+
+        try: 
+            self.SFC()
+            print(f"SFC: {self.sfc}")
+
+        except: print("SFC cannot be found")
+
+
     def Force(self):
         index = 0
         for item in self.engineC:
@@ -188,6 +224,7 @@ class Engine:
 
             index += 1
 
+    #TODO: fuel flow and SFC may be calculated wrong --> wrong answers on hw
     def fuelFlow(self):
         for component in self.components: 
             if isinstance(component, Turbine):
@@ -220,8 +257,10 @@ class Engine:
             self.mDot.append(mHot)
 
     def setThrust(self, F):
-        if self.thrust == 0: self.thrust = F
-        else: self.thrust += F
+        self.engineT.append(F)
+
+        if self.thrustTotal == 0: self.thrustTotal = F
+        else: self.thrustTotal += F
 
 
 class Inlet:

@@ -5,6 +5,21 @@ import numpy.linalg as lg
 import math as m
 import SupportingFiles.engineBuilder as eb
 
+#TODO: should add an isentropic relation section
+
+
+##################################################################
+####################### Rocket Propulsion ########################
+##################################################################
+def nozzleExpansionRatio(pStar, pExit, tStar, tExit, Mexit):
+    #TODO: can be updated with isentropic relations
+    #ae/astar = epsilon
+    pRatio = pStar/pExit
+    tRatio = tExit/tStar
+    epsilon = pRatio*np.sqrt(tRatio)/Mexit
+
+    return epsilon
+
 ##################################################################
 ######################## Flight Mechanics ########################
 ##################################################################
@@ -59,6 +74,8 @@ def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
 
     print("\n")
     print(engine)
+
+    
 
 #Egnine Calculations
 def thrust(mDot, C, Ca, A, p, pa): return mDot*(C-Ca) + A*(p-pa)
