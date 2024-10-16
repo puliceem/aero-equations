@@ -102,6 +102,7 @@ class Engine:
 
     #Methods
     def removeComponent(self):
+        #TODO: does not work with first component
         #remove latest entry from list
         self.components.pop()
 
@@ -732,7 +733,7 @@ class Nozzle:
 
     def notChokedCj(self, R):
         Mach = ae.nozzleMach(self.pOutRatio, self.gamma)
-        self.nozzleV(R, Mach)
+        return self.nozzleV(R, Mach)
     
 class FanNozzle(Nozzle):
     
@@ -749,6 +750,7 @@ class FanNozzle(Nozzle):
 
         self.chokeTest(engine)
 
+        #TODO: p(static) may not work for not choked
         print(f'\nP(static) out = {self.pStaticOut}')
         print(f'Temp(static) Out = {self.tStaticOut}')
         #assuming alwasy first to have C calculated
