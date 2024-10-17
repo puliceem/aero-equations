@@ -7,6 +7,7 @@ class Engine:
     components = []
     compressorWork = 0
     turbineWork = 0
+    totalWork = 0
     Ca = 0
     mTotal = 0
     etaJ = 0
@@ -102,14 +103,18 @@ class Engine:
 
     #Methods
     def removeComponent(self):
-        #TODO: does not work with first component
         #remove latest entry from list
         self.components.pop()
 
-        #reset pIn tIn and station
-        component = self.components[-1]
-        self.pIn = component.pOut
-        self.tIn = component.tOut
+        if self.components:
+            #reset pIn tIn and station
+            component = self.components[-1]
+            self.pIn = component.pOut
+            self.tIn = component.tOut
+        else: 
+            self.pIn = self.pa
+            self.tIn = self.Ta
+
         self.station -= 1
 
     def findComponent(self, type, first=True):
@@ -127,7 +132,6 @@ class Engine:
         return foundComponent
 
     #post assembly
-    #TODO: make checks for all typical output params
     def checkMassFlow(self):
         #mass flow
         if self.mTotal == 0:
@@ -144,7 +148,9 @@ class Engine:
                 #Yes - mass flow known - set power too
                 elif massFlowChoice == 1: 
                     self.setMassFlow(float(input("\nEnter Total Mass Flow: ")))
-                    self.power = self.totalWork*self.mTotal
+
+                    if self.totalWork: self.power = self.totalWork*self.mTotal
+
                     return True
                 #No - check if power known
                 else:

@@ -60,6 +60,7 @@ def inertialAcceleration( v, vDot, omega ):
 
 def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
     selection = 1
+    output = []
 
     engine = eb.Engine(gammaA, gammaG, cpa, cpg)
 
@@ -72,10 +73,46 @@ def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
         if selection == 0: break
         else: engine.addComponent(selection)
 
+    selection = 0
+
     print("\n")
     print(engine)
 
     engine.analysis()
+
+    print("\nWould you like to output any data?")
+    selection = int(input("(1) Yes\n(2) No\n"))
+
+    if selection == 1:
+
+        while selection != 0: 
+            print("\nSelect a station from the list")
+            count = 0
+
+            for component in engine.components:
+                count += 1
+                print(f"({count}) {component.__class__.__name__}")
+
+            index = int(input("\n")) - 1
+
+            count = 0
+
+            print("\nEnter (0) to quit or select from list")
+            for variable in vars(engine.components[index]):
+                if not "_" in variable and not "get" in variable:
+                    count+=1
+                    print(f"({count}) {variable}")
+
+            while selection != 0:
+                selection = int(input("Return: "))
+                
+                if selection > count: print("\nPlease select a number form the list\n")
+                #TODO: does not return variable
+                else: output.append(vars(engine.components[index])[selection-1])
+
+            selection = 0
+
+
 
 #Egnine Calculations
 def thrust(mDot, C, Ca, A, p, pa): return mDot*(C-Ca) + A*(p-pa)
