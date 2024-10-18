@@ -86,11 +86,6 @@ class Engine:
         elif selection == 6: 
             component = Nozzle(pIn, tIn, gammaG, cpg, self)
 
-        #Remove
-        elif selection == 9:
-            self.removeComponent()
-            return
-
         self.components.append(component)
         self.pIn = component.pOut
         self.tIn = component.tOut
@@ -116,6 +111,32 @@ class Engine:
             self.tIn = self.Ta
 
         self.station -= 1
+
+    def returnVariable(self, index, *args):
+        output = []
+        
+        if args: outputVariables = list(args)
+        else: 
+            count = 0
+            variables = []
+            outputVariables = []
+
+            print("\nEnter (0) to quit or select from list")
+            for variable in vars(self.components[index]):
+                count+=1
+                variables.append(variable)
+                print(f"({count}) {variable}")
+
+            while True:
+                selection = int(input("Return: "))
+                
+                if selection == 0: break
+                elif selection > count: print("\nPlease select a number form the list\n")
+                else: outputVariables.append(variable[selection-1])
+        
+        for var in outputVariables: output.append(getattr(self.components[index], var))
+        
+        return output
 
     def findComponent(self, type, first=True):
         #assuming each component has a max of 2
