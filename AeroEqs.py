@@ -59,20 +59,20 @@ def inertialAcceleration( v, vDot, omega ):
 ##################################################################
 
 def engineCalculations(gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
-    selection = 1
+    selection = 0
     count = 0
     index = 0
 
     engine = eb.Engine(gammaA, gammaG, cpa, cpg)
 
-    while selection != 0:
-        #TODO: need to put safeguard on entering numbers
+    while True:
         print("\nSelect a station from the list")
         print("(1) Intake\n(2) Fan\n(3) Compressor\n(4) Combuster\n(5) Turbine\n(6) Nozzle")
         selection = int(input("\n(9) Remove Component\n(0) Stop\n"))
 
         if selection == 0: break
         elif selection == 9: engine.removeComponent()
+        elif selection > 9 or selection < 0: print("Input out of range")
         else: engine.addComponent(selection)
 
     selection = 0

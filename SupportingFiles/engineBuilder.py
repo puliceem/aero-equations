@@ -1,5 +1,4 @@
 import AeroEqs as ae
-import numpy as np
 
 class Engine: 
 
@@ -25,7 +24,7 @@ class Engine:
     sfc = 0
     extraAnalysis = {}
 
-    def __init__(self, gammaA, gammaG, cpa, cpg):
+    def __init__(self, gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
         self.gammaA = gammaA
         self.gammaG = gammaG
         self.cpa = cpa
@@ -33,6 +32,7 @@ class Engine:
 
         self.pa = float(input("Enter ambient pressure: "))
         self.Ta = float(input("Enter ambient temp: "))
+        self.Ca = float(input("Enter aircraft speed (m/s): "))
         self.etaM = float(input("Enter Mechanical Efficiency: "))
         self.station = int(input("Enter the first station number: "))
 
@@ -52,6 +52,7 @@ class Engine:
         return("")
 
     #methods
+    #TODO: consider adding option for selection to be a component class
     def addComponent(self, selection):
         gammaA = self.gammaA
         gammaG = self.gammaG
@@ -132,9 +133,10 @@ class Engine:
                 
                 if selection == 0: break
                 elif selection > count: print("\nPlease select a number form the list\n")
-                else: outputVariables.append(variable[selection-1])
+                else: outputVariables.append(variables[selection-1])
         
-        for var in outputVariables: output.append(getattr(self.components[index], var))
+        for var in outputVariables: 
+            output.append(getattr(self.components[index], var))
         
         return output
 
@@ -178,6 +180,7 @@ class Engine:
                     return self.checkPower()
         else: return True
 
+    #TODO: does not check for mass flow if used first
     def checkPower(self):
         #power
         powerChoice = 0
@@ -314,8 +317,7 @@ class Inlet:
         self.stationStart = engine.station
 
         #get speed (engine) and efficiency (inlet)
-        #assuming inlet means airplane
-        engine.Ca = float(input("\nEnter aircraft speed (m/s): "))
+        #TODO: check if inletPout needs changed
         self.eta = float(input("Enter Intake Isentropic Efficiency: "))
 
         #set p and t in
@@ -402,7 +404,6 @@ class Fan:
     def getTout(self): return self.tOut
     def getPout(self): return self.pOut
     def getStation(self): return self.stationStart
-        
 
 class Compressor:
 
@@ -492,7 +493,6 @@ class Combustor:
         self.pOut = pIn - self.pDrop
 
         #efficiency
-        #TODO: determine if this is necessary here or only in engine.fuelFlow
         self.eta = float(input("Enter the Combustion Isentropic Efficiency: "))
         
         #placeholder for turbine inlet temp
