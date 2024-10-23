@@ -9,6 +9,7 @@ class Engine:
     totalWork = 0
     Ca = 0
     mTotal = 0
+    mRatio = 0
     etaJ = 0
     R = 0
     BPR = 0
@@ -606,11 +607,17 @@ class Turbine:
                 #check/set mdot
                 if engine.checkMassFlow():
                     #calculate T values
-                    self.fanPowerBalance(engine.mTotal, engine.mDot[1], fan.cp, engine.etaM, fan.tOut, fan.tIn, self.tIn)
+                    self.fanPowerBalance(engine.mTotal, engine.mDot[1], fan.cp, self.cp, engine.etaM, fan.tOut, fan.tIn, self.tIn)
 
-                    print(self.tOut)
-                #could be used as error --> triggered when mass flow not known and cant be found
-                else: pass
+                #TODO: may be able to refactor with mRatio being known
+                #may want to check for lift and drag equations
+                else:
+                    engine.mRatio = engine.BPR+1
+
+                    self.delT = engine.mRatio*fan.cp*(fan.tOut-fan.tIn)/(engine.etaM*self.cp)
+                    self.tOut = self.tIn-self.delT
+                
+                print(self.tOut)
 
             #find first compressor
             else: component = engine.findComponent(Compressor)
@@ -687,6 +694,7 @@ class Nozzle:
 
         if engine.etaJ == 0: engine.etaJ = float(input("\nEnter Nozzle Isentropic Efficiency: "))
 
+        #TODO: only accounts for converging
         self.chokeTest(engine)
 
         print(f'\nP(static) out = {self.pStaticOut}')
