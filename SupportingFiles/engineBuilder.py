@@ -311,7 +311,7 @@ class Inlet:
     tOut = 0
 
     #Constructor
-    def __init__(self, gamma, cp, engine: Engine):
+    def __init__(self, gamma, cp, engine: Engine, eta=None):
         #set variables from params
         self.gamma = gamma
         self.cp = cp
@@ -319,7 +319,8 @@ class Inlet:
 
         #get speed (engine) and efficiency (inlet)
         #TODO: check if inletPout needs changed
-        self.eta = float(input("Enter Intake Isentropic Efficiency: "))
+        if eta == None: self.eta = float(input("Enter Intake Isentropic Efficiency: "))
+        else: self.eta = eta
 
         #set p and t in
         self.pIn = engine.pa
@@ -363,7 +364,7 @@ class Fan:
     tRatio = 0
 
     #Constructor
-    def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
+    def __init__(self, pIn, tIn, gamma, cp, engine: Engine, eta=None, FPR=None, BPR=None):
         #setting attributes
         self.pIn = pIn
         self.tIn = tIn
@@ -371,9 +372,14 @@ class Fan:
         self.cp = cp
         self.stationStart = engine.station
 
-        self.eta = float(input("\nEnter the Fan Polytropic Efficiency: "))
-        self.FPR = float(input("Enter Fan Pressure Ratio: "))
-        engine.BPR = float(input("Enter Engine BPR: "))
+        if eta == None: self.eta = float(input("\nEnter the Fan Polytropic Efficiency: "))
+        else: self.eta = eta
+        
+        if FPR == None: self.FPR = float(input("Enter Fan Pressure Ratio: "))
+        else: self.FPR = FPR
+        
+        if BPR == None: engine.BPR = float(input("Enter Engine BPR: "))
+        else: self.BPR = BPR
 
         self.fanPstag()
         self.fanTstag()
@@ -694,8 +700,11 @@ class Nozzle:
 
         if engine.etaJ == 0: engine.etaJ = float(input("\nEnter Nozzle Isentropic Efficiency: "))
 
+        type = int(input("Is the Nozzle CD?\n(1) Yes\n(2)\n"))
+
+        if type == 1: pass
         #TODO: only accounts for converging
-        self.chokeTest(engine)
+        else: self.chokeTest(engine)
 
         print(f'\nP(static) out = {self.pStaticOut}')
         print(f'Temp(static) Out = {self.tStaticOut}')
