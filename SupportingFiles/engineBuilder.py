@@ -421,7 +421,7 @@ class Compressor:
     power = 0
 
     # Constructor
-    def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
+    def __init__(self, pIn, tIn, gamma, cp, engine: Engine, pRatio=None, eta=None, etaChoice=None):
         self.pIn = pIn
         self.tIn = tIn
         self.gamma = gamma
@@ -430,23 +430,32 @@ class Compressor:
 
         efficiencyChoice = 0
 
-        self.pRatio = float(input("\nEnter Compressor pressure ratio: "))
+        if pRatio == None: self.pRatio = float(input("\nEnter Compressor pressure ratio: "))
+        else: self.pRatio = pRatio
 
-        print("\nWhat Efficiency is available?")
-        while efficiencyChoice == 0:
+        if eta == None: 
 
-            efficiencyChoice = int(input("(1) Isentropic\n(2) Polytropic\n"))
+            print("\nWhat Efficiency is available?")
+            while efficiencyChoice == 0:
 
-            if efficiencyChoice != 1 and efficiencyChoice != 2:
-                efficiencyChoice = 0
-                print("Select from the list given")
-            else:
-                self.eta = float(input("\nEnter Compressor Efficiency: "))
-                
-                #isentropic
-                if efficiencyChoice == 1: self.compTstag()
-                #polytropic
-                else: self.compPolyTstag()
+                efficiencyChoice = int(input("(1) Isentropic\n(2) Polytropic\n"))
+
+                if efficiencyChoice != 1 and efficiencyChoice != 2:
+                    efficiencyChoice = 0
+                    print("Select from the list given")
+                else:
+                    self.eta = float(input("\nEnter Compressor Efficiency: "))
+                    
+                    #isentropic
+                    if efficiencyChoice == 1: self.compTstag()
+                    #polytropic
+                    else: self.compPolyTstag()
+        
+        else: 
+            self.eta == eta
+            
+            if etaChoice == 1: self.compTstag()
+            else: self.compPolyTstag()
 
         self.compWork(engine.etaM)
 
@@ -490,17 +499,20 @@ class Compressor:
 class Combustor:
 
     # Constructor
-    def __init__(self, pIn, tIn, engine: Engine):
+    def __init__(self, pIn, tIn, engine: Engine, pDrop=None, eta=None):
         self.pIn = pIn
         self.tIn = tIn
         self.stationStart = engine.station
 
         #assuming pDrop ONLY --> not pDrop/pIn
-        self.pDrop = float(input("\nEnter pressure drop across combustor: "))
+        if pDrop == None: self.pDrop = float(input("\nEnter pressure drop across combustor: "))
+        else: self.pDrop = pDrop
+        
         self.pOut = pIn - self.pDrop
 
         #efficiency
-        self.eta = float(input("Enter the Combustion Isentropic Efficiency: "))
+        if eta == None: self.eta = float(input("Enter the Combustion Isentropic Efficiency: "))
+        else: self.eta = eta
         
         #placeholder for turbine inlet temp
         self.tOut = tIn
@@ -532,7 +544,7 @@ class Turbine:
     work = 0
 
     # Constructor
-    def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
+    def __init__(self, pIn, tIn, gamma, cp, engine: Engine, eta=None, pRatio=None, etaChoice=None):
         #initialize params
         self.pIn = pIn
         self.tIn = tIn
@@ -540,40 +552,54 @@ class Turbine:
         self.cp = cp
         self.stationStart = engine.station
 
-        #for checking
-        efficiencyType = "Isentropic"
-        efficiencyChoice = 0
+        if eta == None:
 
-        print("\nWhat Efficiency is available?")
-        while efficiencyChoice == 0:
+            #for checking
+            efficiencyType = "Isentropic"
+            efficiencyChoice = 0
 
-            efficiencyChoice = int(input("(1) Isentropic\n(2) Polytropic\n"))
+            print("\nWhat Efficiency is available?")
+            while efficiencyChoice == 0:
 
-            #reprompt until correct choice given
-            if efficiencyChoice != 1 and efficiencyChoice != 2:
-                efficiencyChoice = 0
-                print("Select from the list given")
-            #polytropic
-            elif efficiencyChoice == 2: efficiencyType = "Polytropic"
+                efficiencyChoice = int(input("(1) Isentropic\n(2) Polytropic\n"))
 
-        #get turbine efficiency
-        self.eta = float(input(f"\nEnter Turbine {efficiencyType} Efficiency: "))
+                #reprompt until correct choice given
+                if efficiencyChoice != 1 and efficiencyChoice != 2:
+                    efficiencyChoice = 0
+                    print("Select from the list given")
+                #polytropic
+                elif efficiencyChoice == 2: efficiencyType = "Polytropic"
 
-        #Check for pressure ratio
-        print("\nIs the turbine pressure ratio known?")
-        pChoice = int(input("(1) yes\n(2) no\n"))
+            #get turbine efficiency
+            self.eta = float(input(f"\nEnter Turbine {efficiencyType} Efficiency: "))
 
-        #TODO: should this default to powerBalance if possible?
-        #get pressure ratio
-        if pChoice == 1: 
-            self.pRatio = float(input("\nEnter Turbine pressure ratio: "))
-            #poly
-            if efficiencyChoice == 2: self.turbPolyTstag()
-            #isen
-            else: self.turbTstag()
-        
-        #do power balance to get t
-        else: self.powerBalance(engine)
+            #Check for pressure ratio
+            print("\nIs the turbine pressure ratio known?")
+            pChoice = int(input("(1) yes\n(2) no\n"))
+
+            #TODO: should this default to powerBalance if possible?
+            #get pressure ratio
+            if pChoice == 1: 
+                self.pRatio = float(input("\nEnter Turbine pressure ratio: "))
+                #poly
+                if efficiencyChoice == 2: self.turbPolyTstag()
+                #isen
+                else: self.turbTstag()
+            
+            #do power balance to get t
+            else: self.powerBalance(engine)
+
+        else: 
+            self.eta = eta
+
+            #no pRatio supplied
+            if pRatio == None: self.powerBalance(engine)
+            #pRatio supplied
+            else: 
+                self.pRatio = pRatio
+
+                if etaChoice == 2: self.turbPolyTstag()
+                else: self.turbTstag()
         
         # get pout and work
         self.pOut = pIn/self.pRatio
@@ -690,7 +716,7 @@ class Nozzle:
     critPR = 0
 
     # constructor
-    def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
+    def __init__(self, pIn, tIn, gamma, cp, engine: Engine, eta=None, typeChoice=None):
         #initialize params
         self.pIn = pIn
         self.tIn = tIn
@@ -698,9 +724,12 @@ class Nozzle:
         self.cp = cp
         self.stationStart = engine.station
 
-        if engine.etaJ == 0: engine.etaJ = float(input("\nEnter Nozzle Isentropic Efficiency: "))
+        if engine.etaJ == 0: 
+            if eta == None: engine.etaJ = float(input("\nEnter Nozzle Isentropic Efficiency: "))
+            else: engine.etaJ = eta
 
-        type = int(input("Is the Nozzle CD?\n(1) Yes\n(2)\n"))
+        if typeChoice == None: type = int(input("Is the Nozzle CD?\n(1) Yes\n(2)\n"))
+        else: type = typeChoice
 
         if type == 1: pass
         #TODO: only accounts for converging
@@ -782,7 +811,7 @@ class Nozzle:
 class FanNozzle(Nozzle):
     
     #constructor
-    def __init__(self, pIn, tIn, gamma, cp, engine: Engine):
+    def __init__(self, pIn, tIn, gamma, cp, engine: Engine, eta=None):
         #initialize params
         self.pIn = pIn
         self.tIn = tIn
@@ -790,7 +819,9 @@ class FanNozzle(Nozzle):
         self.cp = cp
         self.stationStart = 0
 
-        if engine.etaJ == 0: engine.etaJ = float(input("\nEnter Nozzle Isentropic Efficiency: "))
+        if engine.etaJ == 0: 
+            if eta == None: engine.etaJ = float(input("\nEnter Nozzle Isentropic Efficiency: "))
+            else: engine.etaJ = eta
 
         self.chokeTest(engine)
 
