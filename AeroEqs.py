@@ -113,7 +113,15 @@ def fuelFlow(turbInT, combInT, etaB, cpa, cpg):
     
     return f
 
+def etaT(mDotC, mDotH, mDot, CjC, CjH, Ca, f):
+    return 0.5*(mDotH*CjH**2 + mDotC*CjC**2 - mDot*Ca**2)/(mDotH*f*43100)
+
+def etaP(mDotC, mDotH, mDot, CjC, CjH, Ca):
+    return Ca*(mDotC*(CjC-Ca) + mDotH*(CjH-Ca))/(0.5*(mDotH*CjH**2 + mDotC*CjC**2 - mDot*Ca**2))
+
 def SFC(fuelFlow, w): return 3600*fuelFlow/w
+
+def TSFC(Ca, etaT, etaP): return Ca/(etaT*etaP*43100)
 
 def fanMassFlow(m, BPR):
     mCold = m*BPR/(BPR+1)
@@ -150,7 +158,7 @@ def fanTstag(tIn, gamma, etaFpoly, FPR):
     return tRatio, tOut
 
 #Compressor Calculations
-def compIsoEfficiency(self, T01, T02, pRatio, gamma=1.4):
+def compIsoEfficiency(T01, T02, pRatio, gamma=1.4):
     exp = (gamma-1)/gamma
     eta = T01*(pRatio**(gamma) - 1)/(T02 - T01)
     return eta

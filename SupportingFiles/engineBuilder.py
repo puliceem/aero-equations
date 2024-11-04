@@ -25,17 +25,26 @@ class Engine:
     sfc = 0
     extraAnalysis = {}
 
-    def __init__(self, gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148):
+    def __init__(self, gammaA=1.4, gammaG=1.333, cpa=1.005, cpg=1.148, pa=None, Ta=None, Ca=None, etaM=None, station=None):
         self.gammaA = gammaA
         self.gammaG = gammaG
         self.cpa = cpa
         self.cpg = cpg
 
-        self.pa = float(input("Enter ambient pressure: "))
-        self.Ta = float(input("Enter ambient temp: "))
-        self.Ca = float(input("Enter aircraft speed (m/s): "))
-        self.etaM = float(input("Enter Mechanical Efficiency: "))
-        self.station = int(input("Enter the first station number: "))
+        if pa == None: self.pa = float(input("Enter ambient pressure: "))
+        else: self.pa = pa
+        
+        if Ta == None: self.Ta = float(input("Enter ambient temp: "))
+        else: self.Ta = Ta
+        
+        if Ca == None: self.Ca = float(input("Enter aircraft speed (m/s): "))
+        else: self.Ca = Ca
+        
+        if etaM == None: self.etaM = float(input("Enter Mechanical Efficiency: "))
+        else: self.etaM = etaM
+        
+        if station == None: self.station = int(input("Enter the first station number: "))
+        else: self.station = station
 
         self.pIn = self.pa
         self.tIn = self.Ta
@@ -53,8 +62,7 @@ class Engine:
         return("")
 
     #methods
-    #TODO: consider adding option for selection to be a component class
-    def addComponent(self, selection):
+    def addComponent(self, selection, *args):
         gammaA = self.gammaA
         gammaG = self.gammaG
         cpa = self.cpa
@@ -62,31 +70,35 @@ class Engine:
         pIn = self.pIn
         tIn = self.tIn
 
+        if args: params = list(args)
+        #TODO: may be a better way of doing this
+        else: params = [None]*5
+
         # Inlet
         if selection == 1:
-            component = Inlet(gammaA, cpa, self)
+            component = Inlet(gammaA, cpa, self, eta=params[0])
 
         #Fan
         elif selection == 2:
-            component = Fan(pIn, tIn, gammaA, cpa, self)
+            component = Fan(pIn, tIn, gammaA, cpa, self, eta=params[0], FPR=params[1], BPR=params[2], etaJ=params[3], R=params[4])
 
         # Compressor
         elif selection == 3:
-            component = Compressor(pIn, tIn, gammaA, cpa, self)
+            component = Compressor(pIn, tIn, gammaA, cpa, self, pRatio=params[0], eta=params[1], etaChoice=params[2])
 
         # Combuster
         # assuing no heat exchanger
         elif selection == 4:
-            component = Combustor(pIn, tIn, self)
+            component = Combustor(pIn, tIn, self, pRatio=params[0], eta=params[1])
 
         #Turbine
         elif selection == 5:
-            if not self.findComponent(Turbine): tIn = float(input("\nEnter the Turbine Inlet Temp: "))
-            component = Turbine(pIn, tIn, gammaG, cpg, self)
+            if not self.findComponent(Turbine) and not params: tIn = float(input("\nEnter the Turbine Inlet Temp: "))
+            component = Turbine(pIn, tIn, gammaG, cpg, self, eta=params[0], pRatio=params[1], etaChoice=params[2])
 
         #Nozzle
         elif selection == 6: 
-            component = Nozzle(pIn, tIn, gammaG, cpg, self)
+            component = Nozzle(pIn, tIn, gammaG, cpg, self, eta=params[0], R=params[1], typeChoice=params[2])
 
         self.components.append(component)
         self.pIn = component.pOut
@@ -206,7 +218,7 @@ class Engine:
                 return False
 
     #trying to calculate
-    #TODO: make except add uncalculated to extraAnalysis with check eq
+    #TODO: add any missing params
     def analysis(self):
         #check mass
          if self.checkMassFlow():
@@ -274,7 +286,19 @@ class Engine:
 
         self.f = ae.fuelFlow(turb.tIn, comb.tIn, comb.eta, self.cpa, self.cpg)
 
+    #TODO: figure out when which one needs to be used
     def SFC(self): self.sfc = ae.SFC(self.f, self.totalWork)
+    def TSFC(self): self.tsfc = ae.TSFC(self.Ca, self.etaT, self.etaP)
+
+    def overallEfficiency(self):
+        mDotC = self.mDot[0]
+        mDotH = self.mDot[1]
+        CjC = self.engineC[0]
+        CjH = self.engineC[1]
+
+        self.etaT = ae.etaT(mDotC, mDotH, self.mDot, CjC, CjH, self.Ca, self.f)
+        self.etaP = ae.etaP(mDotC, mDotH, self.mDot, CjC, CjH, self.Ca)
+        self.etaO = self.etaT*self.etaP
 
     #set
     def setCompressorWork(self, work):
@@ -364,7 +388,7 @@ class Fan:
     tRatio = 0
 
     #Constructor
-    def __init__(self, pIn, tIn, gamma, cp, engine: Engine, eta=None, FPR=None, BPR=None):
+    def __init__(self, pIn, tIn, gamma, cp, engine: Engine, eta=None, FPR=None, BPR=None, etaJ=None, R=None):
         #setting attributes
         self.pIn = pIn
         self.tIn = tIn
@@ -384,7 +408,7 @@ class Fan:
         self.fanPstag()
         self.fanTstag()
 
-        self.nozzle = FanNozzle(self.pOut, self.tOut, gamma, cp, engine)
+        self.nozzle = FanNozzle(self.pOut, self.tOut, gamma, cp, engine, etaJ, R=R)
 
         print(f'\nP out = {self.pOut}')
         print(f'Temp Out = {self.tOut}')
@@ -641,8 +665,7 @@ class Turbine:
                     #calculate T values
                     self.fanPowerBalance(engine.mTotal, engine.mDot[1], fan.cp, self.cp, engine.etaM, fan.tOut, fan.tIn, self.tIn)
 
-                #TODO: may be able to refactor with mRatio being known
-                #may want to check for lift and drag equations
+                #no mdot given --> mratio used instead
                 else:
                     engine.mRatio = engine.BPR+1
 
@@ -716,7 +739,7 @@ class Nozzle:
     critPR = 0
 
     # constructor
-    def __init__(self, pIn, tIn, gamma, cp, engine: Engine, eta=None, typeChoice=None):
+    def __init__(self, pIn, tIn, gamma, cp, engine: Engine, eta=None, R=None, typeChoice=None):
         #initialize params
         self.pIn = pIn
         self.tIn = tIn
@@ -733,7 +756,7 @@ class Nozzle:
 
         if type == 1: pass
         #TODO: only accounts for converging
-        else: self.chokeTest(engine)
+        else: self.chokeTest(engine, R=R)
 
         print(f'\nP(static) out = {self.pStaticOut}')
         print(f'Temp(static) Out = {self.tStaticOut}')
@@ -751,11 +774,13 @@ class Nozzle:
         return("")
     
     #methods
-    def chokeTest(self, engine: Engine):
+    def chokeTest(self, engine: Engine, R=None):
         self.critPRatio(engine.etaJ)
         self.pRatio = self.pIn/engine.pa
 
-        if engine.R == 0: engine.R = float(input("Enter R: "))
+        if engine.R == 0: 
+            if R == None: engine.R = float(input("Enter R: "))
+            else: engine.R = R
 
         #choked
         if self.pRatio > self.critPR:
@@ -811,7 +836,7 @@ class Nozzle:
 class FanNozzle(Nozzle):
     
     #constructor
-    def __init__(self, pIn, tIn, gamma, cp, engine: Engine, eta=None):
+    def __init__(self, pIn, tIn, gamma, cp, engine: Engine, eta=None, R=None):
         #initialize params
         self.pIn = pIn
         self.tIn = tIn
@@ -823,7 +848,7 @@ class FanNozzle(Nozzle):
             if eta == None: engine.etaJ = float(input("\nEnter Nozzle Isentropic Efficiency: "))
             else: engine.etaJ = eta
 
-        self.chokeTest(engine)
+        self.chokeTest(engine, R=R)
 
         #TODO: p(static) may not work for not choked
         print(f'\nP(static) out = {self.pStaticOut}')
